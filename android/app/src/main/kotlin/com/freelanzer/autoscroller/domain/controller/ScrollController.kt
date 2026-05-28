@@ -1,5 +1,6 @@
 package com.freelanzer.autoscroller.domain.controller
 
+import android.os.SystemClock
 import com.freelanzer.autoscroller.core.di.ApplicationScope
 import com.freelanzer.autoscroller.data.settings.SettingsRepository
 import javax.inject.Inject
@@ -43,9 +44,18 @@ class ScrollController @Inject constructor(
     private val _scrollCount = MutableStateFlow(0)
     val scrollCount: StateFlow<Int> = _scrollCount.asStateFlow()
 
+    /**
+     * Marca temporal (`SystemClock.elapsedRealtime`) del último swipe automático.
+     * La pausa inteligente usa esta marca para descartar los eventos de scroll que
+     * son consecuencia de nuestro propio `dispatchGesture` (ventana posterior breve).
+     */
+    @Volatile var lastSwipeAtMs: Long = 0L
+        private set
+
     /** Inicia el auto-scroll y resetea el contador de sesión. */
     fun start() {
         _scrollCount.value = 0
+        lastSwipeAtMs = 0L
         _state.value = ScrollState.Scrolling
     }
 
@@ -67,6 +77,7 @@ class ScrollController @Inject constructor(
 
     /** Llamado por [com.freelanzer.autoscroller.service.accessibility.ScrollEngine] tras cada swipe. */
     fun onScrollPerformed() {
+        lastSwipeAtMs = SystemClock.elapsedRealtime()
         _scrollCount.update { it + 1 }
     }
 }

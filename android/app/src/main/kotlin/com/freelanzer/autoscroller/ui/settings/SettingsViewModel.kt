@@ -26,11 +26,13 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.intervalMillisFlow,
         settingsRepository.timeLimitMinutesFlow,
         settingsRepository.alertsEnabledFlow,
-    ) { intervalMs, limitMinutes, alertsEnabled ->
+        settingsRepository.threeFingerTriggerEnabledFlow,
+    ) { intervalMs, limitMinutes, alertsEnabled, threeFingerEnabled ->
         SettingsUiState(
             intervalSeconds = (intervalMs / 1_000).toInt().coerceAtLeast(1),
             timeLimitMinutes = limitMinutes,
             alertsEnabled = alertsEnabled,
+            threeFingerEnabled = threeFingerEnabled,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -52,6 +54,10 @@ class SettingsViewModel @Inject constructor(
 
     fun onAlertsEnabledChanged(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setAlertsEnabled(enabled) }
+    }
+
+    fun onThreeFingerEnabledChanged(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setThreeFingerTriggerEnabled(enabled) }
     }
 
     private companion object {

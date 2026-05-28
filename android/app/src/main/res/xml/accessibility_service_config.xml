@@ -2,11 +2,15 @@
 <!--
   Configuración del AccessibilityService.
   - canPerformGestures: requerido para dispatchGesture (swipe vertical).
-  - typeWindowContentChanged: evento usado para detectar carga de nuevos videos
-    sin recurrir a procesamiento de píxeles.
+  - typeWindowContentChanged|typeWindowStateChanged: estados de la app activa.
+  - typeViewScrolled: necesario para la pausa inteligente (distinguir scroll manual
+    del usuario respecto del scroll generado por nuestro dispatchGesture).
+  El flag FLAG_REQUEST_MULTI_FINGER_GESTURES se gestiona dinámicamente en el servicio
+  cuando el usuario habilita el trigger de 3 dedos (evita interferir con gestos del
+  sistema cuando no se usa la feature).
 -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:accessibilityEventTypes="typeWindowContentChanged|typeWindowStateChanged"
+    android:accessibilityEventTypes="typeWindowContentChanged|typeWindowStateChanged|typeViewScrolled"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:accessibilityFlags="flagDefault|flagRetrieveInteractiveWindows"
     android:canPerformGestures="true"

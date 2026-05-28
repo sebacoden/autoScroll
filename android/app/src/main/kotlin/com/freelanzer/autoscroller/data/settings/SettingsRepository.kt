@@ -44,6 +44,10 @@ class SettingsRepository @Inject constructor(
         it[KEY_EULA_ACCEPTED] ?: false
     }
 
+    val threeFingerTriggerEnabledFlow: Flow<Boolean> = dataStore.read {
+        it[KEY_THREE_FINGER_ENABLED] ?: DEFAULT_THREE_FINGER_ENABLED
+    }
+
     suspend fun setIntervalMillis(millis: Long) {
         require(millis in MIN_INTERVAL_MS..MAX_INTERVAL_MS) {
             "Intervalo fuera de rango ($MIN_INTERVAL_MS..$MAX_INTERVAL_MS ms): $millis"
@@ -64,6 +68,10 @@ class SettingsRepository @Inject constructor(
 
     suspend fun setEulaAccepted(accepted: Boolean) {
         dataStore.edit { it[KEY_EULA_ACCEPTED] = accepted }
+    }
+
+    suspend fun setThreeFingerTriggerEnabled(enabled: Boolean) {
+        dataStore.edit { it[KEY_THREE_FINGER_ENABLED] = enabled }
     }
 
     /**
@@ -87,9 +95,13 @@ class SettingsRepository @Inject constructor(
         const val MAX_TIME_LIMIT_MIN: Int = 180
         const val DEFAULT_ALERTS_ENABLED: Boolean = true
 
+        // Trigger 3 dedos (gesto del AccessibilityService)
+        const val DEFAULT_THREE_FINGER_ENABLED: Boolean = false
+
         private val KEY_INTERVAL_MS = longPreferencesKey("interval_ms")
         private val KEY_TIME_LIMIT_MIN = intPreferencesKey("time_limit_min")
         private val KEY_ALERTS_ENABLED = booleanPreferencesKey("alerts_enabled")
         private val KEY_EULA_ACCEPTED = booleanPreferencesKey("eula_accepted")
+        private val KEY_THREE_FINGER_ENABLED = booleanPreferencesKey("three_finger_enabled")
     }
 }

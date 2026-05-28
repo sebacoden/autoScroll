@@ -8,12 +8,14 @@ data class SettingsUiState(
     val intervalSeconds: Int,
     val timeLimitMinutes: Int,
     val alertsEnabled: Boolean,
+    val threeFingerEnabled: Boolean,
 ) {
     companion object {
         val Initial = SettingsUiState(
             intervalSeconds = 4,
             timeLimitMinutes = 30,
             alertsEnabled = true,
+            threeFingerEnabled = false,
         )
     }
 }

@@ -62,6 +62,10 @@
     <string name="settings_alerts_label">Alertas al alcanzar el límite</string>
     <string name="settings_alerts_help">Recibí una notificación cuando llegues al tiempo configurado.</string>
 
+    <string name="settings_section_triggers">Activadores</string>
+    <string name="settings_three_finger_label">Trigger de 3 dedos</string>
+    <string name="settings_three_finger_help">Tocá con tres dedos en cualquier lugar para iniciar o detener el auto-scroll. Funciona en Android 11+ y se gestiona a través del servicio de accesibilidad (no requiere permiso de overlay).</string>
+
     <!-- Notificaciones -->
     <string name="notif_channel_ongoing_name">Sesión activa</string>
     <string name="notif_channel_ongoing_desc">Muestra el tiempo transcurrido del auto-scroll mientras está activo.</string>

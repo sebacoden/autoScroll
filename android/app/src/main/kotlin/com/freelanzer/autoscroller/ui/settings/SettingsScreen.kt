@@ -60,6 +60,7 @@ fun SettingsScreen(
             onIntervalChange = viewModel::onIntervalSecondsChanged,
             onTimeLimitChange = viewModel::onTimeLimitMinutesChanged,
             onAlertsToggle = viewModel::onAlertsEnabledChanged,
+            onThreeFingerToggle = viewModel::onThreeFingerEnabledChanged,
         )
     }
 }
@@ -71,6 +72,7 @@ private fun SettingsContent(
     onIntervalChange: (Float) -> Unit,
     onTimeLimitChange: (Float) -> Unit,
     onAlertsToggle: (Boolean) -> Unit,
+    onThreeFingerToggle: (Boolean) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -109,6 +111,15 @@ private fun SettingsContent(
                 help = stringResource(R.string.settings_alerts_help),
                 checked = state.alertsEnabled,
                 onCheckedChange = onAlertsToggle,
+            )
+        }
+
+        SectionCard(title = stringResource(R.string.settings_section_triggers)) {
+            ToggleRow(
+                label = stringResource(R.string.settings_three_finger_label),
+                help = stringResource(R.string.settings_three_finger_help),
+                checked = state.threeFingerEnabled,
+                onCheckedChange = onThreeFingerToggle,
             )
         }
     }
