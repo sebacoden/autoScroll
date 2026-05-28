@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AutoScroller</string>
+
+    <string name="accessibility_service_label">AutoScroller</string>
+    <string name="accessibility_service_summary">Scroll automático para video vertical</string>
+    <string name="accessibility_service_description">
+        Habilita el scroll automático en aplicaciones de video vertical (Reels, TikTok, Shorts).
+        AutoScroller solo realiza gestos de desplazamiento; no lee, almacena ni transmite tu contenido.
+    </string>
+
+    <string name="home_title">AutoScroller</string>
+
+    <!-- Estado del servicio -->
+    <string name="home_service_enabled">Servicio de accesibilidad activo</string>
+    <string name="home_service_disabled">Servicio de accesibilidad desactivado</string>
+    <string name="home_open_settings">Abrir Ajustes de Accesibilidad</string>
+
+    <!-- Instrucciones contextuales -->
+    <string name="home_setup_title">Configuración inicial</string>
+    <string name="home_setup_body">
+        Para usar AutoScroller necesitás habilitar su servicio de accesibilidad.
+        Pulsá el botón de abajo, buscá \"AutoScroller\" en la lista y activá el toggle.
+    </string>
+
+    <string name="home_usage_title">Cómo usar</string>
+    <string name="home_usage_step_1">1. Ajustá el intervalo entre swipes con el slider.</string>
+    <string name="home_usage_step_2">2. Pulsá \"Iniciar auto-scroll\".</string>
+    <string name="home_usage_step_3">3. Pasá a TikTok, Reels o Shorts (la app sigue scrolleando en segundo plano).</string>
+    <string name="home_usage_step_4">4. Para detenerlo, volvé a AutoScroller y pulsá \"Detener auto-scroll\".</string>
+    <string name="home_usage_tip">Tip: el botón flotante de accesibilidad del sistema te permite volver a esta pantalla en cualquier momento.</string>
+
+    <!-- Configuración -->
+    <string name="home_interval_label">Intervalo entre swipes: %1$d s</string>
+    <string name="home_interval_min">1 s</string>
+    <string name="home_interval_max">30 s</string>
+
+    <!-- Botones de control -->
+    <string name="home_start_scroll">Iniciar auto-scroll</string>
+    <string name="home_stop_scroll">Detener auto-scroll</string>
+
+    <!-- Panel de prueba -->
+    <string name="home_test_title">Panel de prueba</string>
+    <string name="home_test_hint">Con el auto-scroll activo, esta lista debería desplazarse sola cada %1$d s.</string>
+    <string name="home_test_counter">Swipes realizados: %1$d</string>
+    <string name="home_test_item">Elemento %1$d</string>
+</resources>

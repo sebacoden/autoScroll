@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Tema base mínimo. La UI usa Material3 via Compose y arranca en dark mode;
+      este tema XML solo aplica al instante previo a que Compose tome el control,
+      por lo que también lo dejamos oscuro para evitar un flash blanco.
+    -->
+    <style name="Theme.AutoScroller" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>
