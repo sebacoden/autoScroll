@@ -1,16 +1,28 @@
 package com.freelanzer.autoscroller.ui.settings
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -22,14 +34,21 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.freelanzer.autoscroller.R
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,7 +104,6 @@ private fun SettingsContent(
         SectionCard(title = stringResource(R.string.settings_section_scroll)) {
             SliderRow(
                 label = stringResource(R.string.settings_interval_label, state.intervalSeconds),
-                help = stringResource(R.string.settings_interval_help),
                 value = state.intervalSeconds.toFloat(),
                 range = MIN_INTERVAL_S..MAX_INTERVAL_S,
                 steps = (MAX_INTERVAL_S - MIN_INTERVAL_S).toInt() - 1,
@@ -93,12 +111,12 @@ private fun SettingsContent(
                 maxLabel = stringResource(R.string.settings_interval_max),
                 onValueChange = onIntervalChange,
             )
+            ScrollPreview(intervalSeconds = state.intervalSeconds)
         }
 
         SectionCard(title = stringResource(R.string.settings_section_wellbeing)) {
             SliderRow(
                 label = stringResource(R.string.settings_limit_label, state.timeLimitMinutes),
-                help = stringResource(R.string.settings_limit_help),
                 value = state.timeLimitMinutes.toFloat(),
                 range = MIN_LIMIT_MIN..MAX_LIMIT_MIN,
                 steps = 0,
@@ -108,7 +126,6 @@ private fun SettingsContent(
             )
             ToggleRow(
                 label = stringResource(R.string.settings_alerts_label),
-                help = stringResource(R.string.settings_alerts_help),
                 checked = state.alertsEnabled,
                 onCheckedChange = onAlertsToggle,
             )
@@ -121,9 +138,94 @@ private fun SettingsContent(
                 checked = state.threeFingerEnabled,
                 onCheckedChange = onThreeFingerToggle,
             )
+            Text(
+                text = stringResource(R.string.settings_future_activations),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// Vista previa animada del scroll
+// ---------------------------------------------------------------------------
+
+/**
+ * Muestra una flecha hacia arriba y una tarjeta con un número que se desliza hacia
+ * arriba y es reemplazada por la siguiente, sincronizada con el intervalo configurado.
+ * Sirve como referencia visual del ritmo del auto-scroll mientras el usuario ajusta el
+ * slider.
+ */
+@Composable
+private fun ScrollPreview(intervalSeconds: Int) {
+    var counter by remember { mutableIntStateOf(1) }
+    LaunchedEffect(intervalSeconds) {
+        // El LaunchedEffect se reinicia al cambiar el intervalo: el primer tick respeta
+        // el nuevo valor sin acumular el delay anterior.
+        while (true) {
+            delay(intervalSeconds * 1_000L)
+            counter++
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.settings_preview_title),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Icon(
+            imageVector = Icons.Filled.ArrowUpward,
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Box(
+            modifier = Modifier
+                .size(width = PREVIEW_WIDTH_DP.dp, height = PREVIEW_HEIGHT_DP.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .border(
+                    width = 2.dp,
+                    color = MaterialTheme.colorScheme.outline,
+                    shape = RoundedCornerShape(12.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            AnimatedContent(
+                targetState = counter,
+                transitionSpec = {
+                    (slideInVertically(
+                        initialOffsetY = { fullHeight -> fullHeight },
+                        animationSpec = tween(PREVIEW_SLIDE_DURATION_MS),
+                    ) + fadeIn(tween(PREVIEW_SLIDE_DURATION_MS))).togetherWith(
+                        slideOutVertically(
+                            targetOffsetY = { fullHeight -> -fullHeight },
+                            animationSpec = tween(PREVIEW_SLIDE_DURATION_MS),
+                        ) + fadeOut(tween(PREVIEW_SLIDE_DURATION_MS)),
+                    )
+                },
+                label = "scroll_preview",
+            ) { value ->
+                Text(
+                    text = value.toString(),
+                    style = MaterialTheme.typography.displayMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Bloques de UI reutilizables
+// ---------------------------------------------------------------------------
 
 @Composable
 private fun SectionCard(
@@ -146,7 +248,6 @@ private fun SectionCard(
 @Composable
 private fun SliderRow(
     label: String,
-    help: String,
     value: Float,
     range: ClosedFloatingPointRange<Float>,
     steps: Int,
@@ -169,20 +270,15 @@ private fun SliderRow(
             Text(text = minLabel, style = MaterialTheme.typography.bodySmall)
             Text(text = maxLabel, style = MaterialTheme.typography.bodySmall)
         }
-        Text(
-            modifier = Modifier.padding(top = 4.dp),
-            text = help,
-            style = MaterialTheme.typography.bodySmall,
-        )
     }
 }
 
 @Composable
 private fun ToggleRow(
     label: String,
-    help: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    help: String? = null,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -190,10 +286,13 @@ private fun ToggleRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = label)
-            Text(
-                text = help,
-                style = MaterialTheme.typography.bodySmall,
-            )
+            if (help != null) {
+                Text(
+                    text = help,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
@@ -203,3 +302,7 @@ private const val MIN_INTERVAL_S: Float = 1f
 private const val MAX_INTERVAL_S: Float = 30f
 private const val MIN_LIMIT_MIN: Float = 5f
 private const val MAX_LIMIT_MIN: Float = 180f
+
+private const val PREVIEW_WIDTH_DP: Int = 96
+private const val PREVIEW_HEIGHT_DP: Int = 120
+private const val PREVIEW_SLIDE_DURATION_MS: Int = 350

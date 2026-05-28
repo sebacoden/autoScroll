@@ -49,22 +49,21 @@
     <string name="settings_back">Volver</string>
 
     <string name="settings_section_scroll">Auto-scroll</string>
-    <string name="settings_interval_label">Intervalo entre swipes: %1$d s</string>
-    <string name="settings_interval_help">Cada cuántos segundos se ejecuta un swipe automático.</string>
+    <string name="settings_interval_label">Intervalo: %1$d s</string>
     <string name="settings_interval_min">1 s</string>
     <string name="settings_interval_max">30 s</string>
+    <string name="settings_preview_title">Vista previa</string>
 
     <string name="settings_section_wellbeing">Bienestar digital</string>
-    <string name="settings_limit_label">Límite por sesión: %1$d min</string>
-    <string name="settings_limit_help">Tiempo máximo de auto-scroll antes de mostrar una alerta.</string>
+    <string name="settings_limit_label">Límite: %1$d min</string>
     <string name="settings_limit_min">5 min</string>
     <string name="settings_limit_max">180 min</string>
-    <string name="settings_alerts_label">Alertas al alcanzar el límite</string>
-    <string name="settings_alerts_help">Recibí una notificación cuando llegues al tiempo configurado.</string>
+    <string name="settings_alerts_label">Alerta al llegar al límite</string>
 
-    <string name="settings_section_triggers">Activadores</string>
-    <string name="settings_three_finger_label">Trigger de 3 dedos</string>
-    <string name="settings_three_finger_help">Tocá con tres dedos en cualquier lugar para iniciar o detener el auto-scroll. Funciona en Android 11+ y se gestiona a través del servicio de accesibilidad (no requiere permiso de overlay).</string>
+    <string name="settings_section_triggers">Activación</string>
+    <string name="settings_three_finger_label">Tap con 3 dedos</string>
+    <string name="settings_three_finger_help">Activa o desactiva desde cualquier app. Android 11+.</string>
+    <string name="settings_future_activations">Próximamente: más métodos de activación.</string>
 
     <!-- Notificaciones -->
     <string name="notif_channel_ongoing_name">Sesión activa</string>

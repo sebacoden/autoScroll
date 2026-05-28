@@ -95,8 +95,11 @@ class SettingsRepository @Inject constructor(
         const val MAX_TIME_LIMIT_MIN: Int = 180
         const val DEFAULT_ALERTS_ENABLED: Boolean = true
 
-        // Trigger 3 dedos (gesto del AccessibilityService)
-        const val DEFAULT_THREE_FINGER_ENABLED: Boolean = false
+        // Trigger 3 dedos: activación primaria por defecto (la app queda armada para
+        // alternar start/stop con un tap de 3 dedos en cualquier app). Futuras opciones
+        // de activación custom (más toques, combinaciones de botones) se sumarán como
+        // métodos paralelos.
+        const val DEFAULT_THREE_FINGER_ENABLED: Boolean = true
 
         private val KEY_INTERVAL_MS = longPreferencesKey("interval_ms")
         private val KEY_TIME_LIMIT_MIN = intPreferencesKey("time_limit_min")
