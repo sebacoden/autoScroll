@@ -60,6 +60,7 @@
     <string name="settings_limit_max">180 min</string>
     <string name="settings_alerts_label">Alerta al llegar al límite</string>
 
+    <string name="settings_section_test">Probar</string>
     <string name="settings_section_triggers">Activación</string>
     <string name="settings_three_finger_label">Tap con 3 dedos</string>
     <string name="settings_three_finger_help">Activa o desactiva desde cualquier app. Android 11+.</string>

@@ -5,15 +5,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.freelanzer.autoscroller.ui.eula.EulaScreen
-import com.freelanzer.autoscroller.ui.home.HomeScreen
 import com.freelanzer.autoscroller.ui.settings.SettingsScreen
 
 /**
- * Grafo único de la app. La [startDestination] se decide en `MainActivity` según el flag
- * `eulaAccepted` persistido, leído sincrónicamente al `onCreate` para evitar parpadeos.
- *
- * Al aceptar EULA, navegamos a HOME con `popUpTo(EULA){ inclusive = true }` para que
- * el back gesture no vuelva a mostrar el EULA.
+ * Grafo único de la app: dos rutas (EULA + SETTINGS).
+ * `startDestination` se decide en `MainActivity` según el flag `eulaAccepted` persistido.
+ * Al aceptar la EULA navegamos a SETTINGS con `popUpTo(EULA){ inclusive = true }` para
+ * que el back gesture no regrese a la EULA.
  */
 @Composable
 fun AppNavGraph(startDestination: String) {
@@ -23,19 +21,14 @@ fun AppNavGraph(startDestination: String) {
         composable(AppRoutes.EULA) {
             EulaScreen(
                 onAccepted = {
-                    navController.navigate(AppRoutes.HOME) {
+                    navController.navigate(AppRoutes.SETTINGS) {
                         popUpTo(AppRoutes.EULA) { inclusive = true }
                     }
                 },
             )
         }
-        composable(AppRoutes.HOME) {
-            HomeScreen(
-                onNavigateToSettings = { navController.navigate(AppRoutes.SETTINGS) },
-            )
-        }
         composable(AppRoutes.SETTINGS) {
-            SettingsScreen(onBack = { navController.popBackStack() })
+            SettingsScreen()
         }
     }
 }

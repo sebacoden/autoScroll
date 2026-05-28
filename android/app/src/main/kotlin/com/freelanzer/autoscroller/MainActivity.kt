@@ -14,9 +14,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
 /**
- * Punto de entrada de UI. Determina la pantalla inicial leyendo el flag de EULA en forma
- * sincrónica al `onCreate` (DataStore lookup pequeño, evita parpadeo de la EULA cuando ya
- * fue aceptada).
+ * Punto de entrada de UI. Decide la pantalla inicial leyendo el flag EULA en forma
+ * sincrónica al `onCreate` (DataStore lookup pequeño, evita el parpadeo de la EULA
+ * cuando ya fue aceptada).
+ *
+ * El refresh del estado del servicio de accesibilidad al volver del system settings lo
+ * maneja `SettingsScreen` vía `LifecycleResumeEffect`; no es necesario un override de
+ * `onResume` acá.
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -28,7 +32,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val startDestination = runBlocking {
-            if (settingsRepository.eulaAcceptedFlow.first()) AppRoutes.HOME else AppRoutes.EULA
+            if (settingsRepository.eulaAcceptedFlow.first()) AppRoutes.SETTINGS else AppRoutes.EULA
         }
 
         setContent {
