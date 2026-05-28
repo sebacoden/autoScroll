@@ -2,6 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Notificaciones del módulo de bienestar (ongoing + alerta al límite). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Foreground Service para el temporizador (no se suspende durante sesiones largas). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
     <application
         android:name=".AutoScrollerApp"
         android:allowBackup="true"
@@ -36,6 +43,15 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <service
+            android:name=".service.wellbeing.WellbeingService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Cronometra el tiempo de auto-scroll del usuario y emite una notificación de alerta al alcanzar el límite configurado (bienestar digital). No accede a datos personales ni red." />
         </service>
 
     </application>

@@ -3,8 +3,8 @@ package com.freelanzer.autoscroller.ui.home
 import com.freelanzer.autoscroller.domain.controller.ScrollState
 
 /**
- * Snapshot inmutable del estado de la pantalla principal.
- * El [HomeViewModel] deriva una nueva instancia ante cualquier cambio en sus fuentes.
+ * Snapshot inmutable del estado de la Home. El [HomeViewModel] deriva una nueva instancia
+ * ante cualquier cambio en sus fuentes.
  */
 data class HomeUiState(
     val isServiceEnabled: Boolean,

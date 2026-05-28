@@ -1,6 +1,9 @@
 package com.freelanzer.autoscroller.ui.home
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,19 +19,23 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,31 +45,72 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.freelanzer.autoscroller.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
+fun HomeScreen(
+    onNavigateToSettings: () -> Unit,
+    viewModel: HomeViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
+    RequestNotificationPermissionEffect()
+
     Scaffold(
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.home_title)) }) },
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.home_title)) },
+                actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = stringResource(R.string.home_open_settings_action),
+                        )
+                    }
+                },
+            )
+        },
     ) { innerPadding ->
         HomeContent(
             state = state,
             innerPadding = innerPadding,
-            onOpenSettings = {
+            onOpenAccessibilitySettings = {
                 context.startActivity(
                     Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 )
             },
             onToggleScroll = viewModel::onToggleScroll,
-            onIntervalChange = viewModel::onIntervalSecondsChanged,
         )
+    }
+}
+
+/**
+ * Pide `POST_NOTIFICATIONS` en Android 13+ una sola vez por composición; sin esta
+ * permission la notificación ongoing del WellbeingService no es visible (la app sigue
+ * funcionando, pero el feedback al usuario se pierde).
+ */
+@Composable
+private fun RequestNotificationPermissionEffect() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { /* No-op: el WellbeingService maneja la ausencia de permiso silenciosamente. */ },
+    )
+    LaunchedEffect(Unit) {
+        val granted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }
 
@@ -70,9 +118,8 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
 private fun HomeContent(
     state: HomeUiState,
     innerPadding: PaddingValues,
-    onOpenSettings: () -> Unit,
+    onOpenAccessibilitySettings: () -> Unit,
     onToggleScroll: () -> Unit,
-    onIntervalChange: (Float) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -84,15 +131,11 @@ private fun HomeContent(
     ) {
         ServiceStatusCard(
             isEnabled = state.isServiceEnabled,
-            onOpenSettings = onOpenSettings,
+            onOpenSettings = onOpenAccessibilitySettings,
         )
 
         if (state.isServiceEnabled) {
             UsageInstructionsCard()
-            IntervalSelector(
-                intervalSeconds = state.intervalSeconds,
-                onIntervalChange = onIntervalChange,
-            )
             ScrollToggleButton(
                 isScrolling = state.isScrolling,
                 onClick = onToggleScroll,
@@ -102,7 +145,7 @@ private fun HomeContent(
                 scrollCount = state.scrollCount,
             )
         } else {
-            SetupCard(onOpenSettings = onOpenSettings)
+            SetupCard(onOpenSettings = onOpenAccessibilitySettings)
         }
     }
 }
@@ -135,7 +178,7 @@ private fun ServiceStatusCard(
                     onClick = onOpenSettings,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(stringResource(R.string.home_open_settings))
+                    Text(stringResource(R.string.home_open_accessibility))
                 }
             }
         }
@@ -144,9 +187,7 @@ private fun ServiceStatusCard(
 
 @Composable
 private fun StatusRow(isEnabled: Boolean) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Surface(
             modifier = Modifier
                 .height(12.dp)
@@ -188,7 +229,7 @@ private fun SetupCard(onOpenSettings: () -> Unit) {
                 onClick = onOpenSettings,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(stringResource(R.string.home_open_settings))
+                Text(stringResource(R.string.home_open_accessibility))
             }
         }
     }
@@ -220,48 +261,6 @@ private fun UsageInstructionsCard() {
                 text = stringResource(R.string.home_usage_tip),
                 style = MaterialTheme.typography.bodySmall,
             )
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Interval selector
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun IntervalSelector(
-    intervalSeconds: Int,
-    onIntervalChange: (Float) -> Unit,
-) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.home_interval_label, intervalSeconds),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Slider(
-                value = intervalSeconds.toFloat(),
-                onValueChange = onIntervalChange,
-                valueRange = MIN_INTERVAL_S..MAX_INTERVAL_S,
-                steps = (MAX_INTERVAL_S - MIN_INTERVAL_S).toInt() - 1,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = stringResource(R.string.home_interval_min),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Text(
-                    text = stringResource(R.string.home_interval_max),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
         }
     }
 }
@@ -315,8 +314,6 @@ private fun TestPanel(
                 fontWeight = FontWeight.SemiBold,
             )
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            // Lista interna de altura fija para que el gesto vertical despachado por el
-            // AccessibilityService la scrollee de manera visible.
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -345,11 +342,5 @@ private fun TestRow(index: Int) {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Constantes
-// ---------------------------------------------------------------------------
-
-private const val MIN_INTERVAL_S: Float = 1f
-private const val MAX_INTERVAL_S: Float = 30f
 private const val TEST_LIST_HEIGHT_DP: Int = 280
 private const val TEST_ITEM_COUNT: Int = 60

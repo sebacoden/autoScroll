@@ -4,32 +4,37 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.viewModels
-import androidx.lifecycle.lifecycleScope
 import com.freelanzer.autoscroller.core.ui.theme.AutoScrollerTheme
-import com.freelanzer.autoscroller.ui.home.HomeScreen
-import com.freelanzer.autoscroller.ui.home.HomeViewModel
+import com.freelanzer.autoscroller.data.settings.SettingsRepository
+import com.freelanzer.autoscroller.ui.navigation.AppNavGraph
+import com.freelanzer.autoscroller.ui.navigation.AppRoutes
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
+import javax.inject.Inject
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 
+/**
+ * Punto de entrada de UI. Determina la pantalla inicial leyendo el flag de EULA en forma
+ * sincrónica al `onCreate` (DataStore lookup pequeño, evita parpadeo de la EULA cuando ya
+ * fue aceptada).
+ */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
-    private val homeViewModel: HomeViewModel by viewModels()
+    @Inject lateinit var settingsRepository: SettingsRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val startDestination = runBlocking {
+            if (settingsRepository.eulaAcceptedFlow.first()) AppRoutes.HOME else AppRoutes.EULA
+        }
+
         setContent {
             AutoScrollerTheme {
-                HomeScreen(viewModel = homeViewModel)
+                AppNavGraph(startDestination = startDestination)
             }
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // El usuario puede haber habilitado el servicio en Ajustes y vuelto a la app.
-        lifecycleScope.launch { homeViewModel.refreshServiceStatus() }
     }
 }

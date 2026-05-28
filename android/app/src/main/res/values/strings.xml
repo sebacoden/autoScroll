@@ -9,39 +9,66 @@
         AutoScroller solo realiza gestos de desplazamiento; no lee, almacena ni transmite tu contenido.
     </string>
 
-    <string name="home_title">AutoScroller</string>
+    <!-- EULA -->
+    <string name="eula_title">Antes de empezar</string>
+    <string name="eula_intro">AutoScroller automatiza el desplazamiento en aplicaciones de video vertical para mejorar accesibilidad y bienestar digital.</string>
+    <string name="eula_license_title">Licencia</string>
+    <string name="eula_license_body">Este software se distribuye bajo la licencia Apache 2.0, \"tal cual\" (as-is), sin garantía expresa o implícita.</string>
+    <string name="eula_wellbeing_title">Aviso de bienestar digital</string>
+    <string name="eula_wellbeing_body">El uso prolongado de contenido de video vertical puede afectar tu bienestar. AutoScroller no se hace responsable por el contenido que mostrás ni por el tiempo que pasás usando aplicaciones de terceros. Configurá un límite saludable en los ajustes.</string>
+    <string name="eula_accept">Aceptar y continuar</string>
 
-    <!-- Estado del servicio -->
+    <!-- Home -->
+    <string name="home_title">AutoScroller</string>
+    <string name="home_open_settings_action">Abrir ajustes</string>
+
     <string name="home_service_enabled">Servicio de accesibilidad activo</string>
     <string name="home_service_disabled">Servicio de accesibilidad desactivado</string>
-    <string name="home_open_settings">Abrir Ajustes de Accesibilidad</string>
+    <string name="home_open_accessibility">Abrir Ajustes de Accesibilidad</string>
 
-    <!-- Instrucciones contextuales -->
     <string name="home_setup_title">Configuración inicial</string>
-    <string name="home_setup_body">
-        Para usar AutoScroller necesitás habilitar su servicio de accesibilidad.
-        Pulsá el botón de abajo, buscá \"AutoScroller\" en la lista y activá el toggle.
-    </string>
+    <string name="home_setup_body">Para usar AutoScroller necesitás habilitar su servicio de accesibilidad. Pulsá el botón de abajo, buscá \"AutoScroller\" en la lista y activá el toggle.</string>
 
     <string name="home_usage_title">Cómo usar</string>
-    <string name="home_usage_step_1">1. Ajustá el intervalo entre swipes con el slider.</string>
+    <string name="home_usage_step_1">1. Ajustá el intervalo desde el botón de ajustes (arriba a la derecha).</string>
     <string name="home_usage_step_2">2. Pulsá \"Iniciar auto-scroll\".</string>
     <string name="home_usage_step_3">3. Pasá a TikTok, Reels o Shorts (la app sigue scrolleando en segundo plano).</string>
-    <string name="home_usage_step_4">4. Para detenerlo, volvé a AutoScroller y pulsá \"Detener auto-scroll\".</string>
+    <string name="home_usage_step_4">4. Para detenerlo, volvé acá y pulsá \"Detener auto-scroll\".</string>
     <string name="home_usage_tip">Tip: el botón flotante de accesibilidad del sistema te permite volver a esta pantalla en cualquier momento.</string>
 
-    <!-- Configuración -->
-    <string name="home_interval_label">Intervalo entre swipes: %1$d s</string>
-    <string name="home_interval_min">1 s</string>
-    <string name="home_interval_max">30 s</string>
-
-    <!-- Botones de control -->
     <string name="home_start_scroll">Iniciar auto-scroll</string>
     <string name="home_stop_scroll">Detener auto-scroll</string>
 
-    <!-- Panel de prueba -->
     <string name="home_test_title">Panel de prueba</string>
     <string name="home_test_hint">Con el auto-scroll activo, esta lista debería desplazarse sola cada %1$d s.</string>
     <string name="home_test_counter">Swipes realizados: %1$d</string>
     <string name="home_test_item">Elemento %1$d</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_back">Volver</string>
+
+    <string name="settings_section_scroll">Auto-scroll</string>
+    <string name="settings_interval_label">Intervalo entre swipes: %1$d s</string>
+    <string name="settings_interval_help">Cada cuántos segundos se ejecuta un swipe automático.</string>
+    <string name="settings_interval_min">1 s</string>
+    <string name="settings_interval_max">30 s</string>
+
+    <string name="settings_section_wellbeing">Bienestar digital</string>
+    <string name="settings_limit_label">Límite por sesión: %1$d min</string>
+    <string name="settings_limit_help">Tiempo máximo de auto-scroll antes de mostrar una alerta.</string>
+    <string name="settings_limit_min">5 min</string>
+    <string name="settings_limit_max">180 min</string>
+    <string name="settings_alerts_label">Alertas al alcanzar el límite</string>
+    <string name="settings_alerts_help">Recibí una notificación cuando llegues al tiempo configurado.</string>
+
+    <!-- Notificaciones -->
+    <string name="notif_channel_ongoing_name">Sesión activa</string>
+    <string name="notif_channel_ongoing_desc">Muestra el tiempo transcurrido del auto-scroll mientras está activo.</string>
+    <string name="notif_channel_alert_name">Alertas de bienestar</string>
+    <string name="notif_channel_alert_desc">Aviso al alcanzar el límite de tiempo configurado.</string>
+    <string name="notif_ongoing_title">AutoScroller en curso</string>
+    <string name="notif_ongoing_text">%1$s · límite %2$d min</string>
+    <string name="notif_alert_title">Llegaste a tu límite</string>
+    <string name="notif_alert_text">Considerá tomar un descanso del scroll.</string>
 </resources>
