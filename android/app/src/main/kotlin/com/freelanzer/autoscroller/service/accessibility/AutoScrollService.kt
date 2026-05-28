@@ -4,8 +4,10 @@ import android.accessibilityservice.AccessibilityGestureEvent
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
+import android.os.Build
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import com.freelanzer.autoscroller.data.settings.SettingsRepository
 import com.freelanzer.autoscroller.domain.controller.ScrollController
@@ -67,9 +69,13 @@ class AutoScrollService : AccessibilityService() {
             .launchIn(serviceScope)
 
         // Aplica/quita el flag multi-finger según preferencia del usuario.
-        settingsRepository.threeFingerTriggerEnabledFlow
-            .onEach(::applyMultiFingerFlag)
-            .launchIn(serviceScope)
+        // El flag y `onGesture(AccessibilityGestureEvent)` requieren API 30; en versiones
+        // anteriores el feature simplemente no se ofrece.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            settingsRepository.threeFingerTriggerEnabledFlow
+                .onEach(::applyMultiFingerFlag)
+                .launchIn(serviceScope)
+        }
     }
 
     private fun onStateChanged(state: ScrollState) {
@@ -108,6 +114,7 @@ class AutoScrollService : AccessibilityService() {
         controller.pause()
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     override fun onGesture(gestureEvent: AccessibilityGestureEvent): Boolean {
         if (gestureEvent.gestureId == GESTURE_3_FINGER_SINGLE_TAP) {
             controller.toggle()
@@ -116,6 +123,7 @@ class AutoScrollService : AccessibilityService() {
         return super.onGesture(gestureEvent)
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     private fun applyMultiFingerFlag(enabled: Boolean) {
         val current = serviceInfo ?: return
         val updatedFlags = if (enabled) {
