@@ -61,6 +61,9 @@ android {
         named("test") {
             kotlin.srcDir("src/test/kotlin")
         }
+        named("androidTest") {
+            kotlin.srcDir("src/androidTest/kotlin")
+        }
     }
 
     testOptions {
@@ -113,4 +116,10 @@ dependencies {
     testImplementation(libs.turbine)
     testImplementation(libs.mockk)
     testImplementation(libs.truth)
+
+    // Instrumented tests (androidTest/): Room DAO contra SQLite real en device/emulador
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.truth)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
 }
