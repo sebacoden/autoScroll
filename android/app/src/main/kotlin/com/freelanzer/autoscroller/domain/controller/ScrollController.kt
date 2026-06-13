@@ -1,6 +1,5 @@
 package com.freelanzer.autoscroller.domain.controller
 
-import android.os.SystemClock
 import com.freelanzer.autoscroller.core.di.ApplicationScope
 import com.freelanzer.autoscroller.data.settings.SettingsRepository
 import javax.inject.Inject
@@ -21,7 +20,10 @@ import kotlinx.coroutines.flow.update
  *    `StateFlow` mediante `stateIn` para que UI y servicio puedan leer `.value` sin
  *    suspender.
  *  - `scrollCount`: cantidad de swipes ejecutados en la sesión actual (se resetea
- *    cada vez que se llama a [start]). Útil para feedback en el panel de prueba.
+ *    cada vez que se llama a [start]).
+ *  - `lastSwipeAtMs`: timestamp monotónico del último swipe; lo provee el caller
+ *    (ScrollEngine), no lo lee el controller. Eso mantiene este clase 100% Kotlin
+ *    puro y testeable en JVM sin shadowing de `SystemClock`.
  *
  * El controller **no** persiste el intervalo; eso es responsabilidad del repositorio
  * (separación de responsabilidades persistencia / runtime).
@@ -44,15 +46,10 @@ class ScrollController @Inject constructor(
     private val _scrollCount = MutableStateFlow(0)
     val scrollCount: StateFlow<Int> = _scrollCount.asStateFlow()
 
-    /**
-     * Marca temporal (`SystemClock.elapsedRealtime`) del último swipe automático.
-     * La pausa inteligente usa esta marca para descartar los eventos de scroll que
-     * son consecuencia de nuestro propio `dispatchGesture` (ventana posterior breve).
-     */
     @Volatile var lastSwipeAtMs: Long = 0L
         private set
 
-    /** Inicia el auto-scroll y resetea el contador de sesión. */
+    /** Inicia el auto-scroll y resetea el contador y la marca temporal de sesión. */
     fun start() {
         _scrollCount.value = 0
         lastSwipeAtMs = 0L
@@ -63,7 +60,7 @@ class ScrollController @Inject constructor(
         _state.value = ScrollState.Idle
     }
 
-    /** Pausa reservada para detección de doble-toque / scroll manual (roadmap fase 3). */
+    /** Pausa reservada para la detección de doble-toque / scroll manual (fase 4). */
     fun pause() = _state.update { current ->
         if (current == ScrollState.Scrolling) ScrollState.Paused else current
     }
@@ -75,9 +72,13 @@ class ScrollController @Inject constructor(
         }
     }
 
-    /** Llamado por [com.freelanzer.autoscroller.service.accessibility.ScrollEngine] tras cada swipe. */
-    fun onScrollPerformed() {
-        lastSwipeAtMs = SystemClock.elapsedRealtime()
+    /**
+     * Notifica al controller que se ejecutó un swipe.
+     * El caller (ScrollEngine) provee el `elapsedRealtimeMs` para que esta clase no
+     * dependa de `android.os.SystemClock` y pueda testearse en JVM sin shims.
+     */
+    fun onScrollPerformed(elapsedRealtimeMs: Long) {
+        lastSwipeAtMs = elapsedRealtimeMs
         _scrollCount.update { it + 1 }
     }
 }

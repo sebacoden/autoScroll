@@ -107,6 +107,10 @@ private fun EulaContent(
             title = stringResource(R.string.eula_wellbeing_title),
             body = stringResource(R.string.eula_wellbeing_body),
         )
+        EulaSection(
+            title = stringResource(R.string.eula_data_title),
+            body = stringResource(R.string.eula_data_body),
+        )
 
         Button(
             onClick = onAccept,

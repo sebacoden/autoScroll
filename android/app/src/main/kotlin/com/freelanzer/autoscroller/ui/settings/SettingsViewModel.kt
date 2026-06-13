@@ -1,12 +1,9 @@
 package com.freelanzer.autoscroller.ui.settings
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.freelanzer.autoscroller.core.service.ServiceStatusProvider
 import com.freelanzer.autoscroller.data.settings.SettingsRepository
-import com.freelanzer.autoscroller.domain.controller.ScrollController
-import com.freelanzer.autoscroller.domain.controller.ScrollState
-import com.freelanzer.autoscroller.service.accessibility.AccessibilityServiceStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlin.math.roundToLong
@@ -18,41 +15,37 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel de la pantalla principal (Ajustes). Combina:
- *  - Estado runtime: estado del servicio de accesibilidad, [ScrollController.state],
- *    [ScrollController.scrollCount].
- *  - Prefs persistidas: intervalo, límite de bienestar, alertas, trigger 3 dedos.
+ * ViewModel de la pantalla principal (Ajustes).
  *
- * Para evitar un `combine` con 7 flujos sobre `Array<Any?>` (sin type-safety), se separan
- * los flujos en dos grupos tipados y se combinan los dos resultados.
+ * Combina los `Flow` persistidos del [SettingsRepository] con un flag de
+ * "servicio de accesibilidad habilitado" (resuelto vía [ServiceStatusProvider] para no
+ * acoplar a `Context`). Expone setters que delegan en el repositorio — la validación
+ * de rangos vive ahí.
  *
- * El servicio de accesibilidad solo cambia desde Ajustes del sistema; [refreshServiceStatus]
- * lo invoca el composable cuando el ciclo de vida pasa por `ON_RESUME` (vuelta desde el
- * deep-link de accesibilidad).
+ * `refreshServiceStatus()` lo invoca la UI desde `LifecycleResumeEffect` cuando el
+ * usuario vuelve de Ajustes del sistema.
  */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    application: Application,
     private val settingsRepository: SettingsRepository,
-    private val controller: ScrollController,
-) : AndroidViewModel(application) {
+    private val serviceStatusProvider: ServiceStatusProvider,
+) : ViewModel() {
 
     private val serviceEnabled = MutableStateFlow(
-        AccessibilityServiceStatus.isEnabled(application),
+        serviceStatusProvider.isAutoScrollServiceEnabled(),
     )
 
     val uiState: StateFlow<SettingsUiState> = combine(
-        runtimeStateFlow(),
+        serviceEnabled,
         prefsStateFlow(),
-    ) { runtime, prefs ->
+    ) { enabled, prefs ->
         SettingsUiState(
-            isServiceEnabled = runtime.isServiceEnabled,
-            scrollState = runtime.scrollState,
-            scrollCount = runtime.scrollCount,
+            isServiceEnabled = enabled,
             intervalSeconds = prefs.intervalSeconds,
             timeLimitMinutes = prefs.timeLimitMinutes,
             alertsEnabled = prefs.alertsEnabled,
             threeFingerEnabled = prefs.threeFingerEnabled,
+            swipeActivationEnabled = prefs.swipeActivationEnabled,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -61,10 +54,8 @@ class SettingsViewModel @Inject constructor(
     )
 
     fun refreshServiceStatus() {
-        serviceEnabled.value = AccessibilityServiceStatus.isEnabled(getApplication())
+        serviceEnabled.value = serviceStatusProvider.isAutoScrollServiceEnabled()
     }
-
-    fun onToggleScroll() = controller.toggle()
 
     fun onIntervalSecondsChanged(seconds: Float) {
         val millis = (seconds * 1_000f).roundToLong()
@@ -86,38 +77,32 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setThreeFingerTriggerEnabled(enabled) }
     }
 
-    private fun runtimeStateFlow() = combine(
-        serviceEnabled,
-        controller.state,
-        controller.scrollCount,
-        ::RuntimeBundle,
-    )
+    fun onSwipeActivationEnabledChanged(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setSwipeActivationEnabled(enabled) }
+    }
 
     private fun prefsStateFlow() = combine(
         settingsRepository.intervalMillisFlow,
         settingsRepository.timeLimitMinutesFlow,
         settingsRepository.alertsEnabledFlow,
         settingsRepository.threeFingerTriggerEnabledFlow,
-    ) { intervalMs, limit, alerts, threeFinger ->
+        settingsRepository.swipeActivationEnabledFlow,
+    ) { intervalMs, limit, alerts, threeFinger, swipeActivation ->
         PrefsBundle(
             intervalSeconds = (intervalMs / 1_000).toInt().coerceAtLeast(1),
             timeLimitMinutes = limit,
             alertsEnabled = alerts,
             threeFingerEnabled = threeFinger,
+            swipeActivationEnabled = swipeActivation,
         )
     }
-
-    private data class RuntimeBundle(
-        val isServiceEnabled: Boolean,
-        val scrollState: ScrollState,
-        val scrollCount: Int,
-    )
 
     private data class PrefsBundle(
         val intervalSeconds: Int,
         val timeLimitMinutes: Int,
         val alertsEnabled: Boolean,
         val threeFingerEnabled: Boolean,
+        val swipeActivationEnabled: Boolean,
     )
 
     private companion object {

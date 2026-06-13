@@ -12,6 +12,8 @@ import androidx.core.content.ContextCompat
 import com.freelanzer.autoscroller.data.settings.SettingsRepository
 import com.freelanzer.autoscroller.domain.controller.ScrollController
 import com.freelanzer.autoscroller.domain.controller.ScrollState
+import com.freelanzer.autoscroller.domain.gesture.SwipeActivationDetector
+import com.freelanzer.autoscroller.domain.usage.SessionRecorder
 import com.freelanzer.autoscroller.service.wellbeing.WellbeingService
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -27,31 +29,36 @@ import kotlinx.coroutines.flow.onEach
  * Servicio de accesibilidad que orquesta el auto-scroll.
  *
  * Observa el [ScrollController] (única fuente de verdad runtime, §3.B de la especificación)
- * y según el estado:
- *  - Arranca o detiene el [ScrollEngine] que dispara los gestos.
- *  - Arranca o detiene el [WellbeingService] (foreground service del temporizador).
+ * y según el estado arranca/detiene el [ScrollEngine] (gestos) y el [WellbeingService]
+ * (temporizador en foreground).
  *
- * Funcionalidades agregadas (fase 4):
- *  - **Trigger 3 dedos**: cuando el usuario lo habilita en Ajustes, se setea el flag
- *    `FLAG_REQUEST_MULTI_FINGER_GESTURES` dinámicamente y se escucha `onGesture` para
- *    el `GESTURE_3_FINGER_SINGLE_TAP`, que invoca `controller.toggle()`. Esto reemplaza
- *    el enfoque de overlay del spec original (más limpio: sin `SYSTEM_ALERT_WINDOW`,
- *    sin bloqueo de toques, gestión nativa por el sistema de accesibilidad).
- *  - **Pausa inteligente**: ante un `TYPE_VIEW_SCROLLED` fuera de la ventana
- *    `[lastSwipeAtMs, +PAUSE_DETECTION_WINDOW_MS]` se considera scroll manual del
- *    usuario y se invoca `controller.pause()`. Limitación conocida: detectar
- *    doble-toque (like) requiere análisis del árbol de nodos por aplicación; no
- *    implementado aún por fragilidad per-app.
+ * Métodos de activación:
+ *  - **Tap 3 dedos** (default): flag `FLAG_REQUEST_MULTI_FINGER_GESTURES` (API 30+) +
+ *    `onGesture(GESTURE_3_FINGER_SINGLE_TAP)` → `controller.toggle()`.
+ *  - **3 swipes hacia arriba** (opt-in): en `onAccessibilityEvent`, si el auto-scroll
+ *    está detenido y la feature está habilitada, los swipes verticales hacia arriba se
+ *    cuentan con [SwipeActivationDetector]; al llegar al umbral, `controller.start()`.
+ *
+ * Pausa inteligente: con el auto-scroll activo, un `TYPE_VIEW_SCROLLED` fuera de la
+ * ventana posterior a nuestro propio gesto se interpreta como scroll manual → `pause()`.
  */
 @AndroidEntryPoint
 class AutoScrollService : AccessibilityService() {
 
     @Inject lateinit var controller: ScrollController
     @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var sessionRecorder: SessionRecorder
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var engine: ScrollEngine
+    private val swipeActivationDetector = SwipeActivationDetector()
     private var observerJob: Job? = null
+
+    @Volatile private var swipeActivationEnabled: Boolean =
+        SettingsRepository.DEFAULT_SWIPE_ACTIVATION_ENABLED
+
+    /** Último paquete en foreground, capturado de los eventos; se usa al abrir una sesión. */
+    @Volatile private var lastForegroundPackage: String = ""
 
     private val wellbeingIntent: Intent
         get() = Intent(this, WellbeingService::class.java)
@@ -68,9 +75,15 @@ class AutoScrollService : AccessibilityService() {
             .onEach { state -> onStateChanged(state) }
             .launchIn(serviceScope)
 
-        // Aplica/quita el flag multi-finger según preferencia del usuario.
-        // El flag y `onGesture(AccessibilityGestureEvent)` requieren API 30; en versiones
-        // anteriores el feature simplemente no se ofrece.
+        // Preferencia de activación por 3 swipes hacia arriba.
+        settingsRepository.swipeActivationEnabledFlow
+            .onEach { enabled ->
+                swipeActivationEnabled = enabled
+                if (!enabled) swipeActivationDetector.reset()
+            }
+            .launchIn(serviceScope)
+
+        // Trigger 3 dedos: flag y `onGesture(AccessibilityGestureEvent)` requieren API 30.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             settingsRepository.threeFingerTriggerEnabledFlow
                 .onEach(::applyMultiFingerFlag)
@@ -81,6 +94,8 @@ class AutoScrollService : AccessibilityService() {
     private fun onStateChanged(state: ScrollState) {
         when (state) {
             ScrollState.Scrolling -> {
+                swipeActivationDetector.reset()
+                sessionRecorder.onSessionStarted(lastForegroundPackage)
                 engine.start(intervalProvider = { controller.intervalMillis.value })
                 ContextCompat.startForegroundService(this, wellbeingIntent)
             }
@@ -88,30 +103,60 @@ class AutoScrollService : AccessibilityService() {
             ScrollState.Idle,
             ScrollState.Paused -> {
                 engine.stop()
-                if (state == ScrollState.Idle) stopService(wellbeingIntent)
-                // Bajo Paused mantenemos el WellbeingService corriendo: el usuario sigue
-                // consumiendo contenido, el contador de bienestar debe seguir.
+                if (state == ScrollState.Idle) {
+                    sessionRecorder.onSessionEnded(swipeCount = controller.scrollCount.value)
+                    stopService(wellbeingIntent)
+                }
+                // Bajo Paused mantenemos el WellbeingService y la sesión abiertos: el
+                // usuario sigue consumiendo contenido y puede reanudar el auto-scroll.
             }
+        }
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        event ?: return
+        event.packageName?.toString()?.takeIf { it.isNotBlank() }?.let {
+            lastForegroundPackage = it
+        }
+        if (event.eventType != AccessibilityEvent.TYPE_VIEW_SCROLLED) return
+
+        val now = SystemClock.elapsedRealtime()
+        when (controller.state.value) {
+            ScrollState.Scrolling -> handleSmartPause(now)
+            ScrollState.Idle, ScrollState.Paused -> handleSwipeActivation(event, now)
         }
     }
 
     /**
      * Pausa inteligente: descarta los eventos de scroll generados por nuestro propio
-     * `dispatchGesture` (dentro de la ventana posterior) y trata los demás como scroll
-     * manual del usuario, activando [ScrollState.Paused].
+     * `dispatchGesture` (ventana posterior) y trata el resto como scroll manual → pausa.
      */
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        event ?: return
-        if (event.eventType != AccessibilityEvent.TYPE_VIEW_SCROLLED) return
-        if (controller.state.value != ScrollState.Scrolling) return
-
-        val now = SystemClock.elapsedRealtime()
+    private fun handleSmartPause(now: Long) {
         val lastSwipe = controller.lastSwipeAtMs
         val withinOurGestureWindow = lastSwipe != 0L &&
             now - lastSwipe < PAUSE_DETECTION_WINDOW_MS
         if (withinOurGestureWindow) return
-
         controller.pause()
+    }
+
+    /**
+     * Cuenta swipes hacia arriba para activar el auto-scroll. "Hacia arriba" = avanzar en
+     * el feed; en API 28+ se infiere del signo de `scrollDeltaY` (> 0). En versiones
+     * previas no hay delta disponible, así que se cuenta cualquier scroll vertical.
+     */
+    private fun handleSwipeActivation(event: AccessibilityEvent, now: Long) {
+        if (!swipeActivationEnabled) return
+
+        val isUpward = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            event.scrollDeltaY > 0
+        } else {
+            true
+        }
+        if (!isUpward) return
+
+        if (swipeActivationDetector.onSwipeUp(now)) {
+            controller.start()
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.R)

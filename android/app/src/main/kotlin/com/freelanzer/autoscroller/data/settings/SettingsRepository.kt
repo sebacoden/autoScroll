@@ -15,73 +15,26 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
 /**
- * Persistencia de preferencias del usuario.
+ * Preferencias del usuario persistidas.
  *
- * Fuente única de verdad para los valores **persistidos**; los consumidores observan los
- * `Flow` y propagan los cambios a sus modelos de estado runtime correspondientes.
- *
- *  - [intervalMillisFlow]: tiempo entre swipes (paso 2 del roadmap).
- *  - [timeLimitMinutesFlow]: límite de bienestar digital (paso 3).
- *  - [alertsEnabledFlow]: si emitir la alerta al alcanzar el límite.
- *  - [eulaAcceptedFlow]: si el usuario aceptó los términos al primer inicio.
+ * Es una **interfaz** para que los consumidores (ViewModels) se testeen con un fake en
+ * memoria sin DataStore. La implementación real ([DataStoreSettingsRepository]) se prueba
+ * aparte contra un DataStore de verdad.
  */
-@Singleton
-class SettingsRepository @Inject constructor(
-    private val dataStore: DataStore<Preferences>,
-) {
+interface SettingsRepository {
+    val intervalMillisFlow: Flow<Long>
+    val timeLimitMinutesFlow: Flow<Int>
+    val alertsEnabledFlow: Flow<Boolean>
+    val threeFingerTriggerEnabledFlow: Flow<Boolean>
+    val swipeActivationEnabledFlow: Flow<Boolean>
+    val eulaAcceptedFlow: Flow<Boolean>
 
-    val intervalMillisFlow: Flow<Long> = dataStore.read { it[KEY_INTERVAL_MS] ?: DEFAULT_INTERVAL_MS }
-
-    val timeLimitMinutesFlow: Flow<Int> = dataStore.read {
-        it[KEY_TIME_LIMIT_MIN] ?: DEFAULT_TIME_LIMIT_MIN
-    }
-
-    val alertsEnabledFlow: Flow<Boolean> = dataStore.read {
-        it[KEY_ALERTS_ENABLED] ?: DEFAULT_ALERTS_ENABLED
-    }
-
-    val eulaAcceptedFlow: Flow<Boolean> = dataStore.read {
-        it[KEY_EULA_ACCEPTED] ?: false
-    }
-
-    val threeFingerTriggerEnabledFlow: Flow<Boolean> = dataStore.read {
-        it[KEY_THREE_FINGER_ENABLED] ?: DEFAULT_THREE_FINGER_ENABLED
-    }
-
-    suspend fun setIntervalMillis(millis: Long) {
-        require(millis in MIN_INTERVAL_MS..MAX_INTERVAL_MS) {
-            "Intervalo fuera de rango ($MIN_INTERVAL_MS..$MAX_INTERVAL_MS ms): $millis"
-        }
-        dataStore.edit { it[KEY_INTERVAL_MS] = millis }
-    }
-
-    suspend fun setTimeLimitMinutes(minutes: Int) {
-        require(minutes in MIN_TIME_LIMIT_MIN..MAX_TIME_LIMIT_MIN) {
-            "Límite fuera de rango ($MIN_TIME_LIMIT_MIN..$MAX_TIME_LIMIT_MIN min): $minutes"
-        }
-        dataStore.edit { it[KEY_TIME_LIMIT_MIN] = minutes }
-    }
-
-    suspend fun setAlertsEnabled(enabled: Boolean) {
-        dataStore.edit { it[KEY_ALERTS_ENABLED] = enabled }
-    }
-
-    suspend fun setEulaAccepted(accepted: Boolean) {
-        dataStore.edit { it[KEY_EULA_ACCEPTED] = accepted }
-    }
-
-    suspend fun setThreeFingerTriggerEnabled(enabled: Boolean) {
-        dataStore.edit { it[KEY_THREE_FINGER_ENABLED] = enabled }
-    }
-
-    /**
-     * Atajo interno: aplica recuperación ante `IOException` (archivo corrupto o ausente)
-     * y proyecta a un tipo concreto en una sola línea.
-     */
-    private fun <T> DataStore<Preferences>.read(transform: (Preferences) -> T): Flow<T> =
-        data
-            .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
-            .map(transform)
+    suspend fun setIntervalMillis(millis: Long)
+    suspend fun setTimeLimitMinutes(minutes: Int)
+    suspend fun setAlertsEnabled(enabled: Boolean)
+    suspend fun setThreeFingerTriggerEnabled(enabled: Boolean)
+    suspend fun setSwipeActivationEnabled(enabled: Boolean)
+    suspend fun setEulaAccepted(accepted: Boolean)
 
     companion object {
         // Intervalo entre swipes
@@ -95,16 +48,80 @@ class SettingsRepository @Inject constructor(
         const val MAX_TIME_LIMIT_MIN: Int = 180
         const val DEFAULT_ALERTS_ENABLED: Boolean = true
 
-        // Trigger 3 dedos: activación primaria por defecto (la app queda armada para
-        // alternar start/stop con un tap de 3 dedos en cualquier app). Futuras opciones
-        // de activación custom (más toques, combinaciones de botones) se sumarán como
-        // métodos paralelos.
+        // Activación
         const val DEFAULT_THREE_FINGER_ENABLED: Boolean = true
+        const val DEFAULT_SWIPE_ACTIVATION_ENABLED: Boolean = false
+    }
+}
 
-        private val KEY_INTERVAL_MS = longPreferencesKey("interval_ms")
-        private val KEY_TIME_LIMIT_MIN = intPreferencesKey("time_limit_min")
-        private val KEY_ALERTS_ENABLED = booleanPreferencesKey("alerts_enabled")
-        private val KEY_EULA_ACCEPTED = booleanPreferencesKey("eula_accepted")
-        private val KEY_THREE_FINGER_ENABLED = booleanPreferencesKey("three_finger_enabled")
+/**
+ * Implementación sobre Preferences DataStore. Fuente única de verdad de la persistencia.
+ * La validación de rangos vive acá (contrato del repositorio, no del consumidor).
+ */
+@Singleton
+class DataStoreSettingsRepository @Inject constructor(
+    private val dataStore: DataStore<Preferences>,
+) : SettingsRepository {
+
+    override val intervalMillisFlow: Flow<Long> =
+        dataStore.read { it[KEY_INTERVAL_MS] ?: SettingsRepository.DEFAULT_INTERVAL_MS }
+
+    override val timeLimitMinutesFlow: Flow<Int> =
+        dataStore.read { it[KEY_TIME_LIMIT_MIN] ?: SettingsRepository.DEFAULT_TIME_LIMIT_MIN }
+
+    override val alertsEnabledFlow: Flow<Boolean> =
+        dataStore.read { it[KEY_ALERTS_ENABLED] ?: SettingsRepository.DEFAULT_ALERTS_ENABLED }
+
+    override val threeFingerTriggerEnabledFlow: Flow<Boolean> =
+        dataStore.read { it[KEY_THREE_FINGER_ENABLED] ?: SettingsRepository.DEFAULT_THREE_FINGER_ENABLED }
+
+    override val swipeActivationEnabledFlow: Flow<Boolean> =
+        dataStore.read { it[KEY_SWIPE_ACTIVATION_ENABLED] ?: SettingsRepository.DEFAULT_SWIPE_ACTIVATION_ENABLED }
+
+    override val eulaAcceptedFlow: Flow<Boolean> =
+        dataStore.read { it[KEY_EULA_ACCEPTED] ?: false }
+
+    override suspend fun setIntervalMillis(millis: Long) {
+        require(millis in SettingsRepository.MIN_INTERVAL_MS..SettingsRepository.MAX_INTERVAL_MS) {
+            "Intervalo fuera de rango: $millis"
+        }
+        dataStore.edit { it[KEY_INTERVAL_MS] = millis }
+    }
+
+    override suspend fun setTimeLimitMinutes(minutes: Int) {
+        require(minutes in SettingsRepository.MIN_TIME_LIMIT_MIN..SettingsRepository.MAX_TIME_LIMIT_MIN) {
+            "Límite fuera de rango: $minutes"
+        }
+        dataStore.edit { it[KEY_TIME_LIMIT_MIN] = minutes }
+    }
+
+    override suspend fun setAlertsEnabled(enabled: Boolean) {
+        dataStore.edit { it[KEY_ALERTS_ENABLED] = enabled }
+    }
+
+    override suspend fun setThreeFingerTriggerEnabled(enabled: Boolean) {
+        dataStore.edit { it[KEY_THREE_FINGER_ENABLED] = enabled }
+    }
+
+    override suspend fun setSwipeActivationEnabled(enabled: Boolean) {
+        dataStore.edit { it[KEY_SWIPE_ACTIVATION_ENABLED] = enabled }
+    }
+
+    override suspend fun setEulaAccepted(accepted: Boolean) {
+        dataStore.edit { it[KEY_EULA_ACCEPTED] = accepted }
+    }
+
+    private fun <T> DataStore<Preferences>.read(transform: (Preferences) -> T): Flow<T> =
+        data
+            .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+            .map(transform)
+
+    private companion object {
+        val KEY_INTERVAL_MS = longPreferencesKey("interval_ms")
+        val KEY_TIME_LIMIT_MIN = intPreferencesKey("time_limit_min")
+        val KEY_ALERTS_ENABLED = booleanPreferencesKey("alerts_enabled")
+        val KEY_EULA_ACCEPTED = booleanPreferencesKey("eula_accepted")
+        val KEY_THREE_FINGER_ENABLED = booleanPreferencesKey("three_finger_enabled")
+        val KEY_SWIPE_ACTIVATION_ENABLED = booleanPreferencesKey("swipe_activation_enabled")
     }
 }

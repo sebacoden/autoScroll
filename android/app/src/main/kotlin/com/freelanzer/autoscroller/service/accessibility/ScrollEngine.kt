@@ -3,6 +3,7 @@ package com.freelanzer.autoscroller.service.accessibility
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
+import android.os.SystemClock
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import kotlinx.coroutines.CoroutineScope
@@ -24,7 +25,7 @@ import kotlinx.coroutines.launch
 class ScrollEngine(
     private val service: AccessibilityService,
     private val scope: CoroutineScope,
-    private val onScrollPerformed: () -> Unit,
+    private val onScrollPerformed: (elapsedRealtimeMs: Long) -> Unit,
 ) {
 
     private var job: Job? = null
@@ -39,7 +40,7 @@ class ScrollEngine(
             delay(STARTUP_DELAY_MS)
             while (isActive) {
                 performSwipeUp()
-                onScrollPerformed()
+                onScrollPerformed(SystemClock.elapsedRealtime())
                 delay(intervalProvider().coerceAtLeast(MIN_INTERVAL_MS))
             }
         }

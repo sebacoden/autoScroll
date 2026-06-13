@@ -19,11 +19,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,10 +31,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -85,11 +80,11 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             state = state,
             innerPadding = innerPadding,
             onOpenAccessibilitySettings = { openAccessibilityDetails(context) },
-            onToggleScroll = viewModel::onToggleScroll,
             onIntervalChange = viewModel::onIntervalSecondsChanged,
             onTimeLimitChange = viewModel::onTimeLimitMinutesChanged,
             onAlertsToggle = viewModel::onAlertsEnabledChanged,
             onThreeFingerToggle = viewModel::onThreeFingerEnabledChanged,
+            onSwipeActivationToggle = viewModel::onSwipeActivationEnabledChanged,
         )
     }
 }
@@ -99,11 +94,11 @@ private fun SettingsContent(
     state: SettingsUiState,
     innerPadding: PaddingValues,
     onOpenAccessibilitySettings: () -> Unit,
-    onToggleScroll: () -> Unit,
     onIntervalChange: (Float) -> Unit,
     onTimeLimitChange: (Float) -> Unit,
     onAlertsToggle: (Boolean) -> Unit,
     onThreeFingerToggle: (Boolean) -> Unit,
+    onSwipeActivationToggle: (Boolean) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -155,20 +150,16 @@ private fun SettingsContent(
                 checked = state.threeFingerEnabled,
                 onCheckedChange = onThreeFingerToggle,
             )
+            ToggleRow(
+                label = stringResource(R.string.settings_swipe_activation_label),
+                help = stringResource(R.string.settings_swipe_activation_help),
+                checked = state.swipeActivationEnabled,
+                onCheckedChange = onSwipeActivationToggle,
+            )
             Text(
                 text = stringResource(R.string.settings_future_activations),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        SectionCard(title = stringResource(R.string.settings_section_test)) {
-            TestPanel(
-                isServiceEnabled = state.isServiceEnabled,
-                isScrolling = state.isScrolling,
-                scrollCount = state.scrollCount,
-                intervalSeconds = state.intervalSeconds,
-                onToggleScroll = onToggleScroll,
             )
         }
     }
@@ -297,63 +288,6 @@ private fun ScrollPreview(intervalSeconds: Int) {
 }
 
 // ---------------------------------------------------------------------------
-// Probar (botón manual + contador + lista)
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun TestPanel(
-    isServiceEnabled: Boolean,
-    isScrolling: Boolean,
-    scrollCount: Int,
-    intervalSeconds: Int,
-    onToggleScroll: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = stringResource(R.string.home_test_hint, intervalSeconds),
-            style = MaterialTheme.typography.bodySmall,
-        )
-        Button(
-            onClick = onToggleScroll,
-            enabled = isServiceEnabled,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(
-                text = stringResource(
-                    if (isScrolling) R.string.home_stop_scroll
-                    else R.string.home_start_scroll,
-                ),
-            )
-        }
-        Text(
-            text = stringResource(R.string.home_test_counter, scrollCount),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-        )
-        HorizontalDivider()
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(TEST_LIST_HEIGHT_DP.dp),
-        ) {
-            items(items = (1..TEST_ITEM_COUNT).toList(), key = { it }) { index ->
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    tonalElevation = 1.dp,
-                ) {
-                    Text(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
-                        text = stringResource(R.string.home_test_item, index),
-                    )
-                }
-            }
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
 // Bloques de UI reutilizables
 // ---------------------------------------------------------------------------
 
@@ -460,6 +394,3 @@ private const val MAX_LIMIT_MIN: Float = 180f
 private const val PREVIEW_WIDTH_DP: Int = 96
 private const val PREVIEW_HEIGHT_DP: Int = 120
 private const val PREVIEW_SLIDE_DURATION_MS: Int = 350
-
-private const val TEST_LIST_HEIGHT_DP: Int = 200
-private const val TEST_ITEM_COUNT: Int = 30

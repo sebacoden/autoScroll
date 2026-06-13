@@ -16,6 +16,8 @@
     <string name="eula_license_body">Este software se distribuye bajo la licencia Apache 2.0, \"tal cual\" (as-is), sin garantía expresa o implícita.</string>
     <string name="eula_wellbeing_title">Aviso de bienestar digital</string>
     <string name="eula_wellbeing_body">El uso prolongado de contenido de video vertical puede afectar tu bienestar. AutoScroller no se hace responsable por el contenido que mostrás ni por el tiempo que pasás usando aplicaciones de terceros. Configurá un límite saludable en los ajustes.</string>
+    <string name="eula_data_title">Datos y privacidad</string>
+    <string name="eula_data_body">AutoScroller guarda estadísticas de uso —duración de cada sesión, cantidad de swipes y la aplicación en la que se usó— únicamente en tu dispositivo. Estos datos no se envían a ningún servidor ni se comparten con terceros, y la app no accede al contenido que ves. Si en el futuro se ofrece sincronización en la nube o recopilación de datos, será siempre opcional y requerirá tu consentimiento explícito.</string>
     <string name="eula_accept">Aceptar y continuar</string>
 
     <!-- Home -->
@@ -64,6 +66,8 @@
     <string name="settings_section_triggers">Activación</string>
     <string name="settings_three_finger_label">Tap con 3 dedos</string>
     <string name="settings_three_finger_help">Activa o desactiva desde cualquier app. Android 11+.</string>
+    <string name="settings_swipe_activation_label">3 swipes hacia arriba</string>
+    <string name="settings_swipe_activation_help">Desliza 3 veces seguidas para arriba y el auto-scroll arranca solo.</string>
     <string name="settings_future_activations">Próximamente: más métodos de activación.</string>
 
     <!-- Notificaciones -->
