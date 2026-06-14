@@ -66,6 +66,9 @@ class AutoScrollService : AccessibilityService() {
     /** Último paquete en foreground, capturado de los eventos; se usa al abrir una sesión. */
     @Volatile private var lastForegroundPackage: String = ""
 
+    /** App donde se activó la sesión actual; al salir de ella se detiene el auto-scroll. */
+    @Volatile private var activeSessionPackage: String = ""
+
     private val wellbeingIntent: Intent
         get() = Intent(this, WellbeingService::class.java)
 
@@ -110,18 +113,16 @@ class AutoScrollService : AccessibilityService() {
         when (state) {
             ScrollState.Scrolling -> {
                 swipeActivationDetector.reset()
+                activeSessionPackage = lastForegroundPackage
                 sessionRecorder.onSessionStarted(lastForegroundPackage)
                 engine.start(intervalProvider = { controller.intervalMillis.value })
                 ContextCompat.startForegroundService(this, wellbeingIntent)
             }
 
-            ScrollState.Idle,
-            ScrollState.Paused -> {
+            ScrollState.Idle -> {
                 engine.stop()
-                if (state == ScrollState.Idle) {
-                    sessionRecorder.onSessionEnded(swipeCount = controller.scrollCount.value)
-                    stopService(wellbeingIntent)
-                }
+                sessionRecorder.onSessionEnded(swipeCount = controller.scrollCount.value)
+                stopService(wellbeingIntent)
             }
         }
     }
@@ -134,9 +135,30 @@ class AutoScrollService : AccessibilityService() {
 
         val now = SystemClock.elapsedRealtime()
         when (controller.state.value) {
-            ScrollState.Scrolling -> handleUserInteractionWhileScrolling(event, now)
-            ScrollState.Idle, ScrollState.Paused -> handleSwipeActivation(event, now)
+            ScrollState.Scrolling -> {
+                if (hasLeftSessionApp(event)) {
+                    controller.stop()
+                } else {
+                    handleUserInteractionWhileScrolling(event, now)
+                }
+            }
+            ScrollState.Idle -> handleSwipeActivation(event, now)
         }
+    }
+
+    /**
+     * Detecta si el usuario salió de la app donde se activó el auto-scroll (al launcher u
+     * otra app), para terminar la sesión. Solo se evalúa en cambios de ventana
+     * (`TYPE_WINDOW_STATE_CHANGED`). Se ignoran paquetes de UI de sistema transitorios
+     * (barra de notificaciones, etc.) y los cambios entre apps de la allowlist.
+     */
+    private fun hasLeftSessionApp(event: AccessibilityEvent): Boolean {
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return false
+        val pkg = event.packageName?.toString()?.takeIf { it.isNotBlank() } ?: return false
+        if (pkg in SYSTEM_UI_PACKAGES) return false
+        // Sigue en la app de la sesión o pasó a otra app de video habilitada → no cortar.
+        if (pkg == activeSessionPackage || pkg in activationApps) return false
+        return true
     }
 
     /**
@@ -159,10 +181,14 @@ class AutoScrollService : AccessibilityService() {
     }
 
     /**
-     * Cuenta swipes hacia arriba para activar el auto-scroll, **solo** dentro de una app de
-     * la allowlist [activationApps]. "Hacia arriba" se infiere de `scrollDeltaY > 0` (API
-     * 28+); en versiones previas se cuenta cualquier scroll vertical. El umbral
-     * [requiredSwipes] es configurable por el usuario.
+     * Cuenta swipes verticales para activar el auto-scroll, **solo** dentro de una app de la
+     * allowlist [activationApps]. El umbral [requiredSwipes] es configurable.
+     *
+     * No se filtra por signo de `scrollDeltaY`: en feeds tipo RecyclerView un mismo gesto
+     * emite varios scrolls con deltaY de signo mezclado (fling + settle). Se cuenta cualquier
+     * scroll cuya magnitud supere [MIN_SWIPE_DELTA_PX] (descarta micro-scrolls), y el
+     * [SwipeActivationDetector] agrupa la ráfaga del gesto vía su debounce. En API < 28 no
+     * hay delta disponible → se cuenta cualquier `TYPE_VIEW_SCROLLED`.
      */
     private fun handleSwipeActivation(event: AccessibilityEvent, now: Long) {
         if (!swipeActivationEnabled) return
@@ -172,12 +198,12 @@ class AutoScrollService : AccessibilityService() {
             return
         }
 
-        val isUpward = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            event.scrollDeltaY > 0
+        val significant = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            kotlin.math.abs(event.scrollDeltaY) >= MIN_SWIPE_DELTA_PX
         } else {
             true
         }
-        if (!isUpward) return
+        if (!significant) return
 
         if (swipeActivationDetector.onSwipeUp(now, requiredSwipes)) {
             controller.start()
@@ -230,5 +256,14 @@ class AutoScrollService : AccessibilityService() {
          * Cubre con holgura la duración del gesto (250 ms) más animaciones de fling.
          */
         const val PAUSE_DETECTION_WINDOW_MS: Long = 1_200L
+
+        /** Magnitud mínima (px) de un scroll para contarlo como swipe (descarta micro-scrolls). */
+        const val MIN_SWIPE_DELTA_PX: Int = 80
+
+        /** UI de sistema que aparece transitoriamente y no debe cortar la sesión. */
+        val SYSTEM_UI_PACKAGES: Set<String> = setOf(
+            "com.android.systemui",
+            "android",
+        )
     }
 }

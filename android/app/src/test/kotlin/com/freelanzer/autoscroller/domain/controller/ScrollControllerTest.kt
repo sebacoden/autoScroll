@@ -54,29 +54,10 @@ class ScrollControllerTest {
     }
 
     @Test
-    fun `stop transitions to Idle from any state`() {
+    fun `stop transitions to Idle`() {
         controller.start()
         controller.stop()
         assertThat(controller.state.value).isEqualTo(ScrollState.Idle)
-
-        controller.start()
-        controller.pause()
-        controller.stop()
-        assertThat(controller.state.value).isEqualTo(ScrollState.Idle)
-    }
-
-    @Test
-    fun `pause only takes effect while Scrolling`() {
-        controller.pause()
-        assertThat(controller.state.value).isEqualTo(ScrollState.Idle)
-
-        controller.start()
-        controller.pause()
-        assertThat(controller.state.value).isEqualTo(ScrollState.Paused)
-
-        // Una segunda pause desde Paused no debe cambiar nada.
-        controller.pause()
-        assertThat(controller.state.value).isEqualTo(ScrollState.Paused)
     }
 
     @Test
@@ -86,16 +67,6 @@ class ScrollControllerTest {
         assertThat(controller.state.value).isEqualTo(ScrollState.Scrolling)
         controller.toggle()
         assertThat(controller.state.value).isEqualTo(ScrollState.Idle)
-    }
-
-    @Test
-    fun `toggle from Paused resumes to Scrolling`() {
-        controller.start()
-        controller.pause()
-        assertThat(controller.state.value).isEqualTo(ScrollState.Paused)
-
-        controller.toggle()
-        assertThat(controller.state.value).isEqualTo(ScrollState.Scrolling)
     }
 
     @Test

@@ -1,14 +1,12 @@
 package com.freelanzer.autoscroller.domain.controller
 
 /**
- * Estados posibles del motor de auto-scroll.
+ * Estados del motor de auto-scroll.
  *
- * Modelado como máquina de estados explícita (ver especificación §3.B).
- * `Paused` queda reservado para la lógica de pausa inteligente (doble-toque, scroll manual)
- * que se implementará en fases posteriores del roadmap.
+ * La pausa por interacción del usuario (toque / scroll) no es un estado acá: la maneja el
+ * `ScrollEngine` suspendiendo los swipes temporalmente, sin salir de [Scrolling].
  */
 enum class ScrollState {
     Idle,
     Scrolling,
-    Paused,
 }

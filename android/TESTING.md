@@ -147,6 +147,37 @@ terceros (instalación, login, layout que cambia) → frágil y no determinista.
 > El tap de 3 dedos **no es simulable** en el emulador (no hay shortcut nativo). Usar un
 > device físico para los pasos 2 y 5–6, o el botón de la UI / la activación por swipes.
 
+### Script de testing por adb
+
+`scripts/manual_autoscroll_test.ps1` automatiza lo automatizable de una sesión (instalar,
+habilitar accesibilidad, abrir YouTube, simular swipes, verificar que el `WellbeingService`
+arranca, salir de la app y verificar que la sesión termina, leer las sesiones de Room):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\manual_autoscroll_test.ps1
+```
+
+### Hallazgo importante — activación por swipes y eventos de accesibilidad
+
+Verificado en emulador con logging (`DEBUG_LOG=true` en `AutoScrollService` +
+`adb logcat -s AutoScrollSvc`):
+
+- La activación por swipes **depende de que la app emita `TYPE_VIEW_SCROLLED`** con
+  magnitud de scroll. Un mismo gesto físico genera una ráfaga de eventos con `scrollDeltaY`
+  de signo mezclado → por eso el detector usa **debounce** (no cuenta la ráfaga como varios)
+  y **no filtra por signo** (cuenta cualquier scroll vertical significativo).
+- **Funciona** en feeds basados en `RecyclerView` (TikTok, Instagram Reels, y el *shelf* de
+  Shorts): verificado que activa y arranca el `WellbeingService`.
+- **NO funciona** en el **player fullscreen de YouTube Shorts**: usa un pager custom que solo
+  emite `TYPE_WINDOW_CONTENT_CHANGED` (demasiado ruidoso para detectar swipes), cero
+  `TYPE_VIEW_SCROLLED`. Es una limitación inherente de la detección por eventos de
+  accesibilidad sobre apps de terceros heterogéneas.
+- **El tap de 3 dedos es el activador universal confiable** (gesto a nivel sistema,
+  independiente de la app) — recomendado para YouTube Shorts.
+- **Corte de sesión:** al salir de la app de la sesión hacia el launcher u otra app no
+  habilitada (`TYPE_WINDOW_STATE_CHANGED`), el auto-scroll se detiene. Se ignoran paquetes
+  de UI de sistema transitorios (`com.android.systemui`, `android`).
+
 ---
 
 ## 7. Notas de entorno
