@@ -1,20 +1,18 @@
 package com.freelanzer.autoscroller.domain.gesture
 
 /**
- * Detecta la secuencia de "N swipes hacia arriba en una ventana de tiempo" que el usuario
- * usa para **activar** el auto-scroll manualmente sin tocar la app.
+ * Detecta la secuencia de "N swipes hacia arriba en una ventana de tiempo" que activa el
+ * auto-scroll cuando el usuario está dentro de una app habilitada.
  *
- * Clase pura (sin dependencias de Android): el caller le pasa la marca temporal
- * monotónica de cada swipe, así es testeable en JVM puro.
+ * Clase pura (sin dependencias de Android): el caller pasa la marca temporal monotónica de
+ * cada swipe y el umbral [requiredSwipes] **vigente** (configurable por el usuario), así es
+ * testeable en JVM puro y el umbral puede cambiar en runtime sin recrear el detector.
  *
- *  - Cada swipe hacia arriba dentro de [windowMs] del anterior incrementa el contador.
- *  - Si pasa más de [windowMs] entre dos swipes, la secuencia se reinicia (el primero
- *    cuenta como swipe 1 de una nueva tanda).
- *  - Al alcanzar [requiredSwipes], [onSwipeUp] devuelve `true` UNA vez y resetea el
- *    contador (evita re-disparos en cascada).
+ *  - Cada swipe dentro de [windowMs] del anterior incrementa el contador.
+ *  - Si pasa más de [windowMs] entre dos swipes, la secuencia se reinicia.
+ *  - Al alcanzar `requiredSwipes`, [onSwipeUp] devuelve `true` una vez y resetea.
  */
 class SwipeActivationDetector(
-    private val requiredSwipes: Int = DEFAULT_REQUIRED_SWIPES,
     private val windowMs: Long = DEFAULT_WINDOW_MS,
 ) {
 
@@ -23,14 +21,11 @@ class SwipeActivationDetector(
     private var hasPrevious: Boolean = false
 
     /**
-     * Registra un swipe hacia arriba en [elapsedRealtimeMs].
+     * Registra un swipe hacia arriba en [elapsedRealtimeMs] con el umbral [requiredSwipes].
      * @return `true` si con este swipe se completó la secuencia de activación.
      */
-    fun onSwipeUp(elapsedRealtimeMs: Long): Boolean {
-        // Usamos un flag explícito en vez de `lastSwipeAtMs != 0L`: el timestamp 0 es un
-        // valor válido (en tests; `SystemClock.elapsedRealtime()` es ~0 justo tras el boot).
-        val withinWindow = hasPrevious &&
-            elapsedRealtimeMs - lastSwipeAtMs <= windowMs
+    fun onSwipeUp(elapsedRealtimeMs: Long, requiredSwipes: Int): Boolean {
+        val withinWindow = hasPrevious && elapsedRealtimeMs - lastSwipeAtMs <= windowMs
         count = if (withinWindow) count + 1 else 1
         lastSwipeAtMs = elapsedRealtimeMs
         hasPrevious = true
@@ -43,7 +38,7 @@ class SwipeActivationDetector(
         }
     }
 
-    /** Reinicia la secuencia (p. ej. cuando el auto-scroll arranca por otra vía). */
+    /** Reinicia la secuencia (p. ej. al arrancar por otra vía o cambiar de app). */
     fun reset() {
         count = 0
         lastSwipeAtMs = 0L
@@ -51,7 +46,6 @@ class SwipeActivationDetector(
     }
 
     companion object {
-        const val DEFAULT_REQUIRED_SWIPES: Int = 3
         const val DEFAULT_WINDOW_MS: Long = 3_000L
     }
 }

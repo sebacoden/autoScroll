@@ -1,11 +1,16 @@
 package com.freelanzer.autoscroller.ui.settings
 
+import com.freelanzer.autoscroller.data.settings.SettingsRepository
+
+/** Una app de la allowlist con su etiqueta legible para mostrar en la lista. */
+data class ActivationApp(
+    val packageName: String,
+    val label: String,
+)
+
 /**
- * Snapshot inmutable de la pantalla principal (Ajustes).
- *
- * Tras la consolidación de la fase 5 y la remoción del panel de prueba, la UI no
- * controla el scroll directamente; solo refleja prefs persistidas + estado del
- * servicio de accesibilidad. La activación efectiva ocurre vía tap con 3 dedos.
+ * Snapshot inmutable de la pantalla principal (Ajustes). Refleja prefs persistidas +
+ * estado del servicio de accesibilidad.
  */
 data class SettingsUiState(
     val isServiceEnabled: Boolean,
@@ -14,6 +19,9 @@ data class SettingsUiState(
     val alertsEnabled: Boolean,
     val threeFingerEnabled: Boolean,
     val swipeActivationEnabled: Boolean,
+    val requiredSwipes: Int,
+    val pauseSeconds: Int,
+    val activationApps: List<ActivationApp>,
 ) {
     companion object {
         val Initial = SettingsUiState(
@@ -22,7 +30,10 @@ data class SettingsUiState(
             timeLimitMinutes = 30,
             alertsEnabled = true,
             threeFingerEnabled = true,
-            swipeActivationEnabled = false,
+            swipeActivationEnabled = true,
+            requiredSwipes = SettingsRepository.DEFAULT_REQUIRED_SWIPES,
+            pauseSeconds = SettingsRepository.DEFAULT_PAUSE_ON_TOUCH_SEC,
+            activationApps = emptyList(),
         )
     }
 }

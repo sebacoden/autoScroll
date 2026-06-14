@@ -66,9 +66,25 @@
     <string name="settings_section_triggers">Activación</string>
     <string name="settings_three_finger_label">Tap con 3 dedos</string>
     <string name="settings_three_finger_help">Activa o desactiva desde cualquier app. Android 11+.</string>
-    <string name="settings_swipe_activation_label">3 swipes hacia arriba</string>
-    <string name="settings_swipe_activation_help">Desliza 3 veces seguidas para arriba y el auto-scroll arranca solo.</string>
-    <string name="settings_future_activations">Próximamente: más métodos de activación.</string>
+    <string name="settings_swipe_activation_label">Activar con swipes hacia arriba</string>
+    <string name="settings_swipe_activation_help">Dentro de una app de la lista, desliza varias veces para arriba y el auto-scroll arranca solo.</string>
+    <string name="settings_required_swipes_label">Swipes para activar: %1$d</string>
+    <string name="settings_required_swipes_min">1</string>
+    <string name="settings_required_swipes_max">10</string>
+
+    <string name="settings_section_pause">Pausa al interactuar</string>
+    <string name="settings_pause_label">Pausa: %1$d s</string>
+    <string name="settings_pause_help">Al tocar o deslizar, el auto-scroll se frena y reanuda solo tras este tiempo sin interacción.</string>
+    <string name="settings_pause_min">1 s</string>
+    <string name="settings_pause_max">30 s</string>
+
+    <string name="settings_section_apps">Apps donde se activa</string>
+    <string name="settings_apps_help">El auto-scroll se activa con swipes solo dentro de estas apps.</string>
+    <string name="settings_apps_add">Agregar app</string>
+    <string name="settings_apps_remove">Quitar</string>
+    <string name="settings_apps_empty">No hay apps en la lista. Agregá una.</string>
+
+    <string name="apppicker_title">Elegí apps</string>
 
     <!-- Notificaciones -->
     <string name="notif_channel_ongoing_name">Sesión activa</string>

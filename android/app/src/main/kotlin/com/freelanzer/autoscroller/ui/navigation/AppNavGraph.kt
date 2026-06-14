@@ -4,14 +4,13 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.freelanzer.autoscroller.ui.apps.AppPickerScreen
 import com.freelanzer.autoscroller.ui.eula.EulaScreen
 import com.freelanzer.autoscroller.ui.settings.SettingsScreen
 
 /**
- * Grafo único de la app: dos rutas (EULA + SETTINGS).
+ * Grafo único de la app: EULA → SETTINGS (principal) → APP_PICKER (selector de apps).
  * `startDestination` se decide en `MainActivity` según el flag `eulaAccepted` persistido.
- * Al aceptar la EULA navegamos a SETTINGS con `popUpTo(EULA){ inclusive = true }` para
- * que el back gesture no regrese a la EULA.
  */
 @Composable
 fun AppNavGraph(startDestination: String) {
@@ -28,7 +27,12 @@ fun AppNavGraph(startDestination: String) {
             )
         }
         composable(AppRoutes.SETTINGS) {
-            SettingsScreen()
+            SettingsScreen(
+                onNavigateToAppPicker = { navController.navigate(AppRoutes.APP_PICKER) },
+            )
+        }
+        composable(AppRoutes.APP_PICKER) {
+            AppPickerScreen(onBack = { navController.popBackStack() })
         }
     }
 }

@@ -26,13 +26,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -62,7 +66,10 @@ import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(
+    onNavigateToAppPicker: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
@@ -85,6 +92,10 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             onAlertsToggle = viewModel::onAlertsEnabledChanged,
             onThreeFingerToggle = viewModel::onThreeFingerEnabledChanged,
             onSwipeActivationToggle = viewModel::onSwipeActivationEnabledChanged,
+            onRequiredSwipesChange = viewModel::onRequiredSwipesChanged,
+            onPauseSecondsChange = viewModel::onPauseSecondsChanged,
+            onRemoveApp = viewModel::onRemoveApp,
+            onAddApp = onNavigateToAppPicker,
         )
     }
 }
@@ -99,6 +110,10 @@ private fun SettingsContent(
     onAlertsToggle: (Boolean) -> Unit,
     onThreeFingerToggle: (Boolean) -> Unit,
     onSwipeActivationToggle: (Boolean) -> Unit,
+    onRequiredSwipesChange: (Float) -> Unit,
+    onPauseSecondsChange: (Float) -> Unit,
+    onRemoveApp: (String) -> Unit,
+    onAddApp: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -145,21 +160,98 @@ private fun SettingsContent(
 
         SectionCard(title = stringResource(R.string.settings_section_triggers)) {
             ToggleRow(
-                label = stringResource(R.string.settings_three_finger_label),
-                help = stringResource(R.string.settings_three_finger_help),
-                checked = state.threeFingerEnabled,
-                onCheckedChange = onThreeFingerToggle,
-            )
-            ToggleRow(
                 label = stringResource(R.string.settings_swipe_activation_label),
                 help = stringResource(R.string.settings_swipe_activation_help),
                 checked = state.swipeActivationEnabled,
                 onCheckedChange = onSwipeActivationToggle,
             )
+            if (state.swipeActivationEnabled) {
+                SliderRow(
+                    label = stringResource(R.string.settings_required_swipes_label, state.requiredSwipes),
+                    value = state.requiredSwipes.toFloat(),
+                    range = MIN_SWIPES..MAX_SWIPES,
+                    steps = (MAX_SWIPES - MIN_SWIPES).toInt() - 1,
+                    minLabel = stringResource(R.string.settings_required_swipes_min),
+                    maxLabel = stringResource(R.string.settings_required_swipes_max),
+                    onValueChange = onRequiredSwipesChange,
+                )
+            }
+            ToggleRow(
+                label = stringResource(R.string.settings_three_finger_label),
+                help = stringResource(R.string.settings_three_finger_help),
+                checked = state.threeFingerEnabled,
+                onCheckedChange = onThreeFingerToggle,
+            )
+        }
+
+        SectionCard(title = stringResource(R.string.settings_section_pause)) {
+            SliderRow(
+                label = stringResource(R.string.settings_pause_label, state.pauseSeconds),
+                value = state.pauseSeconds.toFloat(),
+                range = MIN_PAUSE_S..MAX_PAUSE_S,
+                steps = 0,
+                minLabel = stringResource(R.string.settings_pause_min),
+                maxLabel = stringResource(R.string.settings_pause_max),
+                onValueChange = onPauseSecondsChange,
+            )
             Text(
-                text = stringResource(R.string.settings_future_activations),
+                text = stringResource(R.string.settings_pause_help),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        SectionCard(title = stringResource(R.string.settings_section_apps)) {
+            Text(
+                text = stringResource(R.string.settings_apps_help),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (state.activationApps.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.settings_apps_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            } else {
+                state.activationApps.forEach { app ->
+                    AppRow(app = app, onRemove = { onRemoveApp(app.packageName) })
+                }
+            }
+            OutlinedButton(
+                onClick = onAddApp,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(imageVector = Icons.Filled.Add, contentDescription = null)
+                Text(
+                    text = stringResource(R.string.settings_apps_add),
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppRow(
+    app: ActivationApp,
+    onRemove: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = app.label)
+            Text(
+                text = app.packageName,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        IconButton(onClick = onRemove) {
+            Icon(
+                imageVector = Icons.Filled.Close,
+                contentDescription = stringResource(R.string.settings_apps_remove),
             )
         }
     }
@@ -390,6 +482,10 @@ private const val MIN_INTERVAL_S: Float = 1f
 private const val MAX_INTERVAL_S: Float = 30f
 private const val MIN_LIMIT_MIN: Float = 5f
 private const val MAX_LIMIT_MIN: Float = 180f
+private const val MIN_SWIPES: Float = 1f
+private const val MAX_SWIPES: Float = 10f
+private const val MIN_PAUSE_S: Float = 1f
+private const val MAX_PAUSE_S: Float = 30f
 
 private const val PREVIEW_WIDTH_DP: Int = 96
 private const val PREVIEW_HEIGHT_DP: Int = 120

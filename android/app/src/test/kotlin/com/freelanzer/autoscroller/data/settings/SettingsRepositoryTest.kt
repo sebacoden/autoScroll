@@ -127,17 +127,68 @@ class SettingsRepositoryTest {
     }
 
     @Test
-    fun `swipeActivation defaults to false (opt-in)`() = runBlocking {
-        assertThat(SettingsRepository.DEFAULT_SWIPE_ACTIVATION_ENABLED).isFalse()
+    fun `setSwipeActivationEnabled persists toggle`() = runBlocking {
+        repository.setSwipeActivationEnabled(true)
         repository.swipeActivationEnabledFlow.test {
-            assertThat(awaitItem()).isFalse()
+            assertThat(awaitItem()).isTrue()
             cancelAndConsumeRemainingEvents()
         }
     }
 
     @Test
-    fun `setSwipeActivationEnabled persists toggle`() = runBlocking {
-        repository.setSwipeActivationEnabled(true)
+    fun `requiredSwipes defaults to 3 and persists`() = runBlocking {
+        assertThat(SettingsRepository.DEFAULT_REQUIRED_SWIPES).isEqualTo(3)
+        repository.setRequiredSwipesToActivate(5)
+        repository.requiredSwipesToActivateFlow.test {
+            assertThat(awaitItem()).isEqualTo(5)
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `setRequiredSwipes rejects out-of-range`() = runBlocking {
+        repository.setRequiredSwipesToActivate(SettingsRepository.MAX_REQUIRED_SWIPES + 1)
+    }
+
+    @Test
+    fun `pauseOnTouch defaults to 3s and persists`() = runBlocking {
+        assertThat(SettingsRepository.DEFAULT_PAUSE_ON_TOUCH_SEC).isEqualTo(3)
+        repository.setPauseOnTouchSeconds(10)
+        repository.pauseOnTouchSecondsFlow.test {
+            assertThat(awaitItem()).isEqualTo(10)
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `activationApps defaults to the predefined set`() = runBlocking {
+        repository.activationAppPackagesFlow.test {
+            assertThat(awaitItem()).isEqualTo(DefaultActivationApps.PACKAGES)
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `addActivationApp adds to the set`() = runBlocking {
+        repository.addActivationApp("com.example.app")
+        repository.activationAppPackagesFlow.test {
+            assertThat(awaitItem()).contains("com.example.app")
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `removeActivationApp removes from the set`() = runBlocking {
+        repository.removeActivationApp(DefaultActivationApps.YOUTUBE)
+        repository.activationAppPackagesFlow.test {
+            assertThat(awaitItem()).doesNotContain(DefaultActivationApps.YOUTUBE)
+            cancelAndConsumeRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `swipeActivation defaults to true`() = runBlocking {
+        assertThat(SettingsRepository.DEFAULT_SWIPE_ACTIVATION_ENABLED).isTrue()
         repository.swipeActivationEnabledFlow.test {
             assertThat(awaitItem()).isTrue()
             cancelAndConsumeRemainingEvents()

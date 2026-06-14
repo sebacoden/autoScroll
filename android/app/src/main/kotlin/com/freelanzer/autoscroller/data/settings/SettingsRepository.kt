@@ -7,12 +7,26 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+
+/**
+ * Packages por defecto donde la activación por swipes está habilitada (feeds de video
+ * vertical). El usuario puede agregar/quitar apps desde Ajustes.
+ */
+object DefaultActivationApps {
+    const val YOUTUBE = "com.google.android.youtube"
+    const val INSTAGRAM = "com.instagram.android"
+    const val TIKTOK = "com.zhiliaoapp.musically"
+    const val FACEBOOK = "com.facebook.katana"
+
+    val PACKAGES: Set<String> = setOf(YOUTUBE, INSTAGRAM, TIKTOK, FACEBOOK)
+}
 
 /**
  * Preferencias del usuario persistidas.
@@ -27,6 +41,9 @@ interface SettingsRepository {
     val alertsEnabledFlow: Flow<Boolean>
     val threeFingerTriggerEnabledFlow: Flow<Boolean>
     val swipeActivationEnabledFlow: Flow<Boolean>
+    val requiredSwipesToActivateFlow: Flow<Int>
+    val pauseOnTouchSecondsFlow: Flow<Int>
+    val activationAppPackagesFlow: Flow<Set<String>>
     val eulaAcceptedFlow: Flow<Boolean>
 
     suspend fun setIntervalMillis(millis: Long)
@@ -34,6 +51,10 @@ interface SettingsRepository {
     suspend fun setAlertsEnabled(enabled: Boolean)
     suspend fun setThreeFingerTriggerEnabled(enabled: Boolean)
     suspend fun setSwipeActivationEnabled(enabled: Boolean)
+    suspend fun setRequiredSwipesToActivate(count: Int)
+    suspend fun setPauseOnTouchSeconds(seconds: Int)
+    suspend fun addActivationApp(packageName: String)
+    suspend fun removeActivationApp(packageName: String)
     suspend fun setEulaAccepted(accepted: Boolean)
 
     companion object {
@@ -50,7 +71,17 @@ interface SettingsRepository {
 
         // Activación
         const val DEFAULT_THREE_FINGER_ENABLED: Boolean = true
-        const val DEFAULT_SWIPE_ACTIVATION_ENABLED: Boolean = false
+        const val DEFAULT_SWIPE_ACTIVATION_ENABLED: Boolean = true
+
+        // Swipes hacia arriba necesarios para activar (dentro de una app de la lista)
+        const val DEFAULT_REQUIRED_SWIPES: Int = 3
+        const val MIN_REQUIRED_SWIPES: Int = 1
+        const val MAX_REQUIRED_SWIPES: Int = 10
+
+        // Pausa temporal al interactuar (toque / scroll) antes de reanudar solo
+        const val DEFAULT_PAUSE_ON_TOUCH_SEC: Int = 3
+        const val MIN_PAUSE_ON_TOUCH_SEC: Int = 1
+        const val MAX_PAUSE_ON_TOUCH_SEC: Int = 30
     }
 }
 
@@ -77,6 +108,15 @@ class DataStoreSettingsRepository @Inject constructor(
 
     override val swipeActivationEnabledFlow: Flow<Boolean> =
         dataStore.read { it[KEY_SWIPE_ACTIVATION_ENABLED] ?: SettingsRepository.DEFAULT_SWIPE_ACTIVATION_ENABLED }
+
+    override val requiredSwipesToActivateFlow: Flow<Int> =
+        dataStore.read { it[KEY_REQUIRED_SWIPES] ?: SettingsRepository.DEFAULT_REQUIRED_SWIPES }
+
+    override val pauseOnTouchSecondsFlow: Flow<Int> =
+        dataStore.read { it[KEY_PAUSE_ON_TOUCH_SEC] ?: SettingsRepository.DEFAULT_PAUSE_ON_TOUCH_SEC }
+
+    override val activationAppPackagesFlow: Flow<Set<String>> =
+        dataStore.read { it[KEY_ACTIVATION_APPS] ?: DefaultActivationApps.PACKAGES }
 
     override val eulaAcceptedFlow: Flow<Boolean> =
         dataStore.read { it[KEY_EULA_ACCEPTED] ?: false }
@@ -107,6 +147,35 @@ class DataStoreSettingsRepository @Inject constructor(
         dataStore.edit { it[KEY_SWIPE_ACTIVATION_ENABLED] = enabled }
     }
 
+    override suspend fun setRequiredSwipesToActivate(count: Int) {
+        require(count in SettingsRepository.MIN_REQUIRED_SWIPES..SettingsRepository.MAX_REQUIRED_SWIPES) {
+            "Cantidad de swipes fuera de rango: $count"
+        }
+        dataStore.edit { it[KEY_REQUIRED_SWIPES] = count }
+    }
+
+    override suspend fun setPauseOnTouchSeconds(seconds: Int) {
+        require(seconds in SettingsRepository.MIN_PAUSE_ON_TOUCH_SEC..SettingsRepository.MAX_PAUSE_ON_TOUCH_SEC) {
+            "Segundos de pausa fuera de rango: $seconds"
+        }
+        dataStore.edit { it[KEY_PAUSE_ON_TOUCH_SEC] = seconds }
+    }
+
+    override suspend fun addActivationApp(packageName: String) {
+        if (packageName.isBlank()) return
+        dataStore.edit { prefs ->
+            val current = prefs[KEY_ACTIVATION_APPS] ?: DefaultActivationApps.PACKAGES
+            prefs[KEY_ACTIVATION_APPS] = current + packageName
+        }
+    }
+
+    override suspend fun removeActivationApp(packageName: String) {
+        dataStore.edit { prefs ->
+            val current = prefs[KEY_ACTIVATION_APPS] ?: DefaultActivationApps.PACKAGES
+            prefs[KEY_ACTIVATION_APPS] = current - packageName
+        }
+    }
+
     override suspend fun setEulaAccepted(accepted: Boolean) {
         dataStore.edit { it[KEY_EULA_ACCEPTED] = accepted }
     }
@@ -123,5 +192,8 @@ class DataStoreSettingsRepository @Inject constructor(
         val KEY_EULA_ACCEPTED = booleanPreferencesKey("eula_accepted")
         val KEY_THREE_FINGER_ENABLED = booleanPreferencesKey("three_finger_enabled")
         val KEY_SWIPE_ACTIVATION_ENABLED = booleanPreferencesKey("swipe_activation_enabled")
+        val KEY_REQUIRED_SWIPES = intPreferencesKey("required_swipes")
+        val KEY_PAUSE_ON_TOUCH_SEC = intPreferencesKey("pause_on_touch_sec")
+        val KEY_ACTIVATION_APPS = stringSetPreferencesKey("activation_apps")
     }
 }
