@@ -212,8 +212,10 @@ Compose + Material 3, un solo `AppNavGraph` con rutas centralizadas en `AppRoute
 eula  ──(aceptar)──▶  settings  ──▶  app_picker
 ```
 
-`MainActivity` resuelve el `startDestination` leyendo `eulaAcceptedFlow.first()` con
-`runBlocking` (evita parpadeo). `SettingsScreen` es la pantalla principal post-onboarding
+`MainActivity` resuelve el `startDestination` leyendo `eulaAcceptedFlow.first()` **fuera del
+hilo principal** (DataStore es IO); mientras tanto mantiene la **SplashScreen** del sistema
+visible (`installSplashScreen().setKeepOnScreenCondition`), evitando el parpadeo de la EULA
+sin bloquear el arranque. `SettingsScreen` es la pantalla principal post-onboarding
 (secciones Auto-scroll / Bienestar / Activadores). Los ViewModels combinan los flows del
 repositorio en un `UiState` inmutable; la validación de rangos vive en el repositorio.
 
