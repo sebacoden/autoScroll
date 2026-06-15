@@ -1,14 +1,38 @@
-*.iml
-.gradle
-/local.properties
-/.idea
-.DS_Store
+# ─── Build / Gradle ───────────────────────────────────────────────
+.gradle/
+.kotlin/
 /build
+/app/build
+/app/release
 /captures
 .externalNativeBuild
 .cxx
+*.iml
+
+# ─── IDE ──────────────────────────────────────────────────────────
+/.idea
+
+# ─── OS ───────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Config local de la máquina (ruta del SDK, etc.) — NUNCA versionar ──
 local.properties
+
+# ─── Secretos y firma de release — NUNCA versionar ────────────────
+# Credenciales de firma (contraseñas del keystore, alias, etc.)
+keystore.properties
+signing.properties
+secrets.properties
+# Keystores de release (el debug.keystore es público y se puede compartir)
+*.jks
 *.keystore
 !debug.keystore
-/app/release
-/app/build
+*.p12
+*.pem
+# Configs de servicios con API keys (Firebase, mapas, etc.)
+google-services.json
+# Variables de entorno
+.env
+.env.*
+*.env

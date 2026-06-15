@@ -5,3 +5,21 @@
 # OS
 .DS_Store
 Thumbs.db
+
+# ─── Secretos / credenciales — NUNCA versionar (red de seguridad a nivel repo) ──
+# Firma de release y keystores
+keystore.properties
+signing.properties
+secrets.properties
+*.jks
+*.keystore
+!debug.keystore
+*.p12
+*.pem
+# Configs de servicios con API keys (Firebase, mapas, etc.)
+google-services.json
+# Variables de entorno y config local
+.env
+.env.*
+*.env
+local.properties
