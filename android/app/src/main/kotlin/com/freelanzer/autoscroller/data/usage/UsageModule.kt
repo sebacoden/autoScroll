@@ -19,10 +19,12 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object UsageProvidesModule {
 
+    private const val DATABASE_NAME = "autoscroller_usage.db"
+
     @Provides
     @Singleton
     fun provideUsageDatabase(@ApplicationContext context: Context): UsageDatabase =
-        Room.databaseBuilder(context, UsageDatabase::class.java, "autoscroller_usage.db")
+        Room.databaseBuilder(context, UsageDatabase::class.java, DATABASE_NAME)
             .build()
 
     @Provides

@@ -24,34 +24,13 @@
     <string name="eula_data_body">AutoScroller guarda estadísticas de uso —duración de cada sesión, cantidad de swipes y la aplicación en la que se usó— únicamente en tu dispositivo. Estos datos no se envían a ningún servidor ni se comparten con terceros, y la app no accede al contenido que ves. Si en el futuro se ofrece sincronización en la nube o recopilación de datos, será siempre opcional y requerirá tu consentimiento explícito.</string>
     <string name="eula_accept">Aceptar y continuar</string>
 
-    <!-- Home -->
-    <string name="home_title">AutoScroller</string>
-    <string name="home_open_settings_action">Abrir ajustes</string>
-
-    <string name="home_service_enabled">Servicio de accesibilidad activo</string>
-    <string name="home_service_disabled">Servicio de accesibilidad desactivado</string>
-    <string name="home_open_accessibility">Abrir Ajustes de Accesibilidad</string>
-
-    <string name="home_setup_title">Configuración inicial</string>
-    <string name="home_setup_body">Para usar AutoScroller necesitás habilitar su servicio de accesibilidad. Pulsá el botón de abajo, buscá \"AutoScroller\" en la lista y activá el toggle.</string>
-
-    <string name="home_usage_title">Cómo usar</string>
-    <string name="home_usage_step_1">1. Ajustá el intervalo desde el botón de ajustes (arriba a la derecha).</string>
-    <string name="home_usage_step_2">2. Pulsá \"Iniciar auto-scroll\".</string>
-    <string name="home_usage_step_3">3. Pasá a TikTok, Reels o Shorts (la app sigue scrolleando en segundo plano).</string>
-    <string name="home_usage_step_4">4. Para detenerlo, volvé acá y pulsá \"Detener auto-scroll\".</string>
-    <string name="home_usage_tip">Tip: el botón flotante de accesibilidad del sistema te permite volver a esta pantalla en cualquier momento.</string>
-
-    <string name="home_start_scroll">Iniciar auto-scroll</string>
-    <string name="home_stop_scroll">Detener auto-scroll</string>
-
-    <string name="home_test_title">Panel de prueba</string>
-    <string name="home_test_hint">Con el auto-scroll activo, esta lista debería desplazarse sola cada %1$d s.</string>
-    <string name="home_test_counter">Swipes realizados: %1$d</string>
-    <string name="home_test_item">Elemento %1$d</string>
+    <!-- Tarjeta de estado del servicio (pantalla de Ajustes) -->
+    <string name="status_service_enabled">Servicio de accesibilidad activo</string>
+    <string name="status_service_disabled">Servicio de accesibilidad desactivado</string>
+    <string name="status_open_accessibility">Abrir Ajustes de Accesibilidad</string>
+    <string name="status_setup_body">Para usar AutoScroller necesitás habilitar su servicio de accesibilidad. Pulsá el botón de abajo, buscá \"AutoScroller\" en la lista y activá el toggle.</string>
 
     <!-- Settings -->
-    <string name="settings_title">Ajustes</string>
     <string name="settings_back">Volver</string>
 
     <string name="settings_section_scroll">Auto-scroll</string>
@@ -66,7 +45,6 @@
     <string name="settings_limit_max">180 min</string>
     <string name="settings_alerts_label">Alerta al llegar al límite</string>
 
-    <string name="settings_section_test">Probar</string>
     <string name="settings_section_triggers">Activación</string>
     <string name="settings_three_finger_label">Tap con 3 dedos</string>
     <string name="settings_three_finger_help">Activa o desactiva desde cualquier app. Android 11+.</string>

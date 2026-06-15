@@ -289,22 +289,22 @@ private fun ServiceStatusCard(
                 Text(
                     modifier = Modifier.padding(start = 8.dp),
                     text = stringResource(
-                        if (isEnabled) R.string.home_service_enabled
-                        else R.string.home_service_disabled,
+                        if (isEnabled) R.string.status_service_enabled
+                        else R.string.status_service_disabled,
                     ),
                     fontWeight = FontWeight.Medium,
                 )
             }
             if (!isEnabled) {
                 Text(
-                    text = stringResource(R.string.home_setup_body),
+                    text = stringResource(R.string.status_setup_body),
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Button(
                     onClick = onOpenSettings,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(stringResource(R.string.home_open_accessibility))
+                    Text(stringResource(R.string.status_open_accessibility))
                 }
             }
         }

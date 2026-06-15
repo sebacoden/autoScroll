@@ -3,6 +3,7 @@ package com.freelanzer.autoscroller.service.accessibility
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
+import android.os.Build
 import android.os.SystemClock
 import android.util.DisplayMetrics
 import android.util.Log
@@ -115,10 +116,17 @@ class ScrollEngine(
 
     private fun screenSize(): Pair<Int, Int>? {
         val wm = service.getSystemService(WindowManager::class.java) ?: return null
-        val metrics = DisplayMetrics()
-        @Suppress("DEPRECATION")
-        wm.defaultDisplay.getRealMetrics(metrics)
-        return metrics.widthPixels to metrics.heightPixels
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // API 30+: currentWindowMetrics reporta los bounds reales de la ventana
+            // (incluye barras de sistema), correcto también en multi-ventana/plegables.
+            val bounds = wm.currentWindowMetrics.bounds
+            bounds.width() to bounds.height()
+        } else {
+            val metrics = DisplayMetrics()
+            @Suppress("DEPRECATION")
+            wm.defaultDisplay.getRealMetrics(metrics)
+            metrics.widthPixels to metrics.heightPixels
+        }
     }
 
     private companion object {

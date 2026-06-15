@@ -41,9 +41,8 @@ class WellbeingService : LifecycleService() {
     private var sessionStartElapsed: Long = 0L
     private var alertPosted: Boolean = false
 
-    @Volatile private var limitMillis: Long =
-        TimeUnit.MINUTES.toMillis(SettingsRepository.DEFAULT_TIME_LIMIT_MIN.toLong())
     @Volatile private var alertsEnabled: Boolean = SettingsRepository.DEFAULT_ALERTS_ENABLED
+    /** Única fuente de verdad del límite; los millis se derivan on-the-fly cuando hacen falta. */
     @Volatile private var currentLimitMinutes: Int = SettingsRepository.DEFAULT_TIME_LIMIT_MIN
 
     override fun onCreate() {
@@ -53,7 +52,6 @@ class WellbeingService : LifecycleService() {
         lifecycleScope.launch {
             settingsRepository.timeLimitMinutesFlow.collect { minutes ->
                 currentLimitMinutes = minutes
-                limitMillis = TimeUnit.MINUTES.toMillis(minutes.toLong())
             }
         }
         lifecycleScope.launch {
@@ -69,7 +67,10 @@ class WellbeingService : LifecycleService() {
         }
         startInForeground()
         startTicker()
-        return START_STICKY
+        // El ciclo de vida lo gobierna AutoScrollService (start en Scrolling, stop en Idle).
+        // Es un FGS atado a una sesión efímera: si el sistema lo mata, NO debe recrearse solo
+        // sin sesión activa (evita una notificación ongoing huérfana).
+        return START_NOT_STICKY
     }
 
     private fun startInForeground() {
@@ -93,6 +94,7 @@ class WellbeingService : LifecycleService() {
         tickerJob = lifecycleScope.launch {
             while (isActive) {
                 val elapsed = SystemClock.elapsedRealtime() - sessionStartElapsed
+                val limitMillis = TimeUnit.MINUTES.toMillis(currentLimitMinutes.toLong())
                 notifier.refreshOngoing(elapsed, currentLimitMinutes)
                 if (!alertPosted && elapsed >= limitMillis) {
                     alertPosted = true

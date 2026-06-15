@@ -24,34 +24,13 @@
     <string name="eula_data_body">AutoScroller stores usage statistics —duration of each session, number of swipes and the app it was used in— only on your device. This data is not sent to any server or shared with third parties, and the app does not access the content you view. If cloud sync or data collection is offered in the future, it will always be optional and require your explicit consent.</string>
     <string name="eula_accept">Accept and continue</string>
 
-    <!-- Home -->
-    <string name="home_title">AutoScroller</string>
-    <string name="home_open_settings_action">Open settings</string>
-
-    <string name="home_service_enabled">Accessibility service active</string>
-    <string name="home_service_disabled">Accessibility service disabled</string>
-    <string name="home_open_accessibility">Open Accessibility Settings</string>
-
-    <string name="home_setup_title">Initial setup</string>
-    <string name="home_setup_body">To use AutoScroller you need to enable its accessibility service. Tap the button below, find \"AutoScroller\" in the list and turn on the toggle.</string>
-
-    <string name="home_usage_title">How to use</string>
-    <string name="home_usage_step_1">1. Adjust the interval from the settings button (top right).</string>
-    <string name="home_usage_step_2">2. Tap \"Start auto-scroll\".</string>
-    <string name="home_usage_step_3">3. Switch to TikTok, Reels or Shorts (the app keeps scrolling in the background).</string>
-    <string name="home_usage_step_4">4. To stop it, come back here and tap \"Stop auto-scroll\".</string>
-    <string name="home_usage_tip">Tip: the system accessibility floating button lets you return to this screen at any time.</string>
-
-    <string name="home_start_scroll">Start auto-scroll</string>
-    <string name="home_stop_scroll">Stop auto-scroll</string>
-
-    <string name="home_test_title">Test panel</string>
-    <string name="home_test_hint">With auto-scroll active, this list should scroll on its own every %1$d s.</string>
-    <string name="home_test_counter">Swipes performed: %1$d</string>
-    <string name="home_test_item">Item %1$d</string>
+    <!-- Service status card (Settings screen) -->
+    <string name="status_service_enabled">Accessibility service active</string>
+    <string name="status_service_disabled">Accessibility service disabled</string>
+    <string name="status_open_accessibility">Open Accessibility Settings</string>
+    <string name="status_setup_body">To use AutoScroller you need to enable its accessibility service. Tap the button below, find \"AutoScroller\" in the list and turn on the toggle.</string>
 
     <!-- Settings -->
-    <string name="settings_title">Settings</string>
     <string name="settings_back">Back</string>
 
     <string name="settings_section_scroll">Auto-scroll</string>
@@ -66,7 +45,6 @@
     <string name="settings_limit_max">180 min</string>
     <string name="settings_alerts_label">Alert when the limit is reached</string>
 
-    <string name="settings_section_test">Test</string>
     <string name="settings_section_triggers">Activation</string>
     <string name="settings_three_finger_label">Three-finger tap</string>
     <string name="settings_three_finger_help">Toggle on or off from any app. Android 11+.</string>
