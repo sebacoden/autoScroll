@@ -1,5 +1,7 @@
 # Onboarding del proyecto (para agentes)
 
+> 🌐 **Español** · [English](project-onboarding.en.md)
+
 ## Qué es
 
 **AutoScroller**: app Android de accesibilidad/bienestar que automatiza el scroll en feeds de

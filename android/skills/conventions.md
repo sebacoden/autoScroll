@@ -1,5 +1,7 @@
 # Convenciones y trampas conocidas
 
+> 🌐 **Español** · [English](conventions.en.md)
+
 ## Convenciones de código
 
 - **Idioma:** comentarios, KDoc, mensajes de commit y docs en **español**.

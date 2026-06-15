@@ -1,5 +1,7 @@
 # skills/ — Contexto para agentes de IA
 
+> 🌐 **Español** · [English](README.en.md)
+
 Esta carpeta NO contiene código de la app: es **documentación orientada a agentes de IA**
 (Claude Code, Copilot, etc.) que vayan a trabajar en este repositorio. Su objetivo es darle a
 un agente el contexto que **no** se deduce solo leyendo el código: convenciones, decisiones de

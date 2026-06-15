@@ -1,5 +1,7 @@
 # Arquitectura — AutoScroller (Android)
 
+> 🌐 **Español** · [English](ARCHITECTURE.en.md)
+
 Documentación técnica del módulo Android. Para *cómo usar* la app, ver el
 [README](../../README.md); para *cómo testear*, ver [TESTING.md](../TESTING.md).
 

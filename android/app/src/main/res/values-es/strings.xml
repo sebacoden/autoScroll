@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Traducción al español (es). El idioma por defecto (inglés) está en values/strings.xml.
+  Android elige este archivo automáticamente en dispositivos con idioma español.
+-->
+<resources>
+    <string name="app_name">AutoScroller</string>
+
+    <string name="accessibility_service_label">AutoScroller</string>
+    <string name="accessibility_service_summary">Scroll automático para video vertical</string>
+    <string name="accessibility_service_description">
+        Habilita el scroll automático en aplicaciones de video vertical (Reels, TikTok, Shorts).
+        AutoScroller solo realiza gestos de desplazamiento; no lee, almacena ni transmite tu contenido.
+    </string>
+
+    <!-- EULA -->
+    <string name="eula_title">Antes de empezar</string>
+    <string name="eula_intro">AutoScroller automatiza el desplazamiento en aplicaciones de video vertical para mejorar accesibilidad y bienestar digital.</string>
+    <string name="eula_license_title">Licencia</string>
+    <string name="eula_license_body">Este software se distribuye bajo la licencia Apache 2.0, \"tal cual\" (as-is), sin garantía expresa o implícita.</string>
+    <string name="eula_wellbeing_title">Aviso de bienestar digital</string>
+    <string name="eula_wellbeing_body">El uso prolongado de contenido de video vertical puede afectar tu bienestar. AutoScroller no se hace responsable por el contenido que mostrás ni por el tiempo que pasás usando aplicaciones de terceros. Configurá un límite saludable en los ajustes.</string>
+    <string name="eula_data_title">Datos y privacidad</string>
+    <string name="eula_data_body">AutoScroller guarda estadísticas de uso —duración de cada sesión, cantidad de swipes y la aplicación en la que se usó— únicamente en tu dispositivo. Estos datos no se envían a ningún servidor ni se comparten con terceros, y la app no accede al contenido que ves. Si en el futuro se ofrece sincronización en la nube o recopilación de datos, será siempre opcional y requerirá tu consentimiento explícito.</string>
+    <string name="eula_accept">Aceptar y continuar</string>
+
+    <!-- Home -->
+    <string name="home_title">AutoScroller</string>
+    <string name="home_open_settings_action">Abrir ajustes</string>
+
+    <string name="home_service_enabled">Servicio de accesibilidad activo</string>
+    <string name="home_service_disabled">Servicio de accesibilidad desactivado</string>
+    <string name="home_open_accessibility">Abrir Ajustes de Accesibilidad</string>
+
+    <string name="home_setup_title">Configuración inicial</string>
+    <string name="home_setup_body">Para usar AutoScroller necesitás habilitar su servicio de accesibilidad. Pulsá el botón de abajo, buscá \"AutoScroller\" en la lista y activá el toggle.</string>
+
+    <string name="home_usage_title">Cómo usar</string>
+    <string name="home_usage_step_1">1. Ajustá el intervalo desde el botón de ajustes (arriba a la derecha).</string>
+    <string name="home_usage_step_2">2. Pulsá \"Iniciar auto-scroll\".</string>
+    <string name="home_usage_step_3">3. Pasá a TikTok, Reels o Shorts (la app sigue scrolleando en segundo plano).</string>
+    <string name="home_usage_step_4">4. Para detenerlo, volvé acá y pulsá \"Detener auto-scroll\".</string>
+    <string name="home_usage_tip">Tip: el botón flotante de accesibilidad del sistema te permite volver a esta pantalla en cualquier momento.</string>
+
+    <string name="home_start_scroll">Iniciar auto-scroll</string>
+    <string name="home_stop_scroll">Detener auto-scroll</string>
+
+    <string name="home_test_title">Panel de prueba</string>
+    <string name="home_test_hint">Con el auto-scroll activo, esta lista debería desplazarse sola cada %1$d s.</string>
+    <string name="home_test_counter">Swipes realizados: %1$d</string>
+    <string name="home_test_item">Elemento %1$d</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_back">Volver</string>
+
+    <string name="settings_section_scroll">Auto-scroll</string>
+    <string name="settings_interval_label">Intervalo: %1$d s</string>
+    <string name="settings_interval_min">1 s</string>
+    <string name="settings_interval_max">30 s</string>
+    <string name="settings_preview_title">Vista previa</string>
+
+    <string name="settings_section_wellbeing">Bienestar digital</string>
+    <string name="settings_limit_label">Límite: %1$d min</string>
+    <string name="settings_limit_min">5 min</string>
+    <string name="settings_limit_max">180 min</string>
+    <string name="settings_alerts_label">Alerta al llegar al límite</string>
+
+    <string name="settings_section_test">Probar</string>
+    <string name="settings_section_triggers">Activación</string>
+    <string name="settings_three_finger_label">Tap con 3 dedos</string>
+    <string name="settings_three_finger_help">Activa o desactiva desde cualquier app. Android 11+.</string>
+    <string name="settings_swipe_activation_label">Activar con swipes hacia arriba</string>
+    <string name="settings_swipe_activation_help">Dentro de una app de la lista, desliza varias veces para arriba y el auto-scroll arranca solo.</string>
+    <string name="settings_required_swipes_label">Swipes para activar: %1$d</string>
+    <string name="settings_required_swipes_min">1</string>
+    <string name="settings_required_swipes_max">10</string>
+
+    <string name="settings_section_pause">Pausa al interactuar</string>
+    <string name="settings_pause_label">Pausa: %1$d s</string>
+    <string name="settings_pause_help">Al tocar o deslizar, el auto-scroll se frena y reanuda solo tras este tiempo sin interacción.</string>
+    <string name="settings_pause_min">1 s</string>
+    <string name="settings_pause_max">30 s</string>
+
+    <string name="settings_section_apps">Apps donde se activa</string>
+    <string name="settings_apps_help">El auto-scroll se activa con swipes solo dentro de estas apps.</string>
+    <string name="settings_apps_add">Agregar app</string>
+    <string name="settings_apps_remove">Quitar</string>
+    <string name="settings_apps_empty">No hay apps en la lista. Agregá una.</string>
+
+    <string name="apppicker_title">Elegí apps</string>
+
+    <!-- Notificaciones -->
+    <string name="notif_channel_ongoing_name">Sesión activa</string>
+    <string name="notif_channel_ongoing_desc">Muestra el tiempo transcurrido del auto-scroll mientras está activo.</string>
+    <string name="notif_channel_alert_name">Alertas de bienestar</string>
+    <string name="notif_channel_alert_desc">Aviso al alcanzar el límite de tiempo configurado.</string>
+    <string name="notif_ongoing_title">AutoScroller en curso</string>
+    <string name="notif_ongoing_text">%1$s · límite %2$d min</string>
+    <string name="notif_alert_title">Llegaste a tu límite</string>
+    <string name="notif_alert_text">Considerá tomar un descanso del scroll.</string>
+</resources>

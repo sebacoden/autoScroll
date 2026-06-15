@@ -1,5 +1,7 @@
 # Hooks de debug y observabilidad
 
+> 🌐 **Español** · [English](debug-hooks.en.md)
+
 Para manejar y observar el servicio de forma determinista en tests e2e (donde el tap de 3
 dedos no es simulable y la activación por swipes no es confiable en todas las apps), el
 `AutoScrollService` registra un **`BroadcastReceiver` solo en builds debug**

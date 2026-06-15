@@ -1,5 +1,7 @@
 # AutoScroller
 
+> 🌐 **Español** · [English](README.en.md)
+
 Herramienta de **accesibilidad y bienestar digital** que automatiza el scroll en feeds de
 video vertical (YouTube Shorts, TikTok, Instagram Reels, Facebook). Pensada para personas con
 movilidad reducida y para quienes quieren consumir contenido sin el gesto repetitivo del

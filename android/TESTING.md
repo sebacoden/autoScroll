@@ -1,5 +1,7 @@
 # Testing — AutoScroller (módulo Android)
 
+> 🌐 **Español** · [English](TESTING.en.md)
+
 Guía de qué está testeado, cómo correrlo y cómo replicarlo. La estrategia sigue la
 pirámide de tests: muchos **unit tests** rápidos y deterministas, algunos **instrumentados**
 para lo que necesita Android real, y una **verificación manual** documentada para el
