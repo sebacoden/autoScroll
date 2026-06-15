@@ -80,6 +80,12 @@ La app registra cada sesión de auto-scroll en `autoscroller_usage.db` (tabla
    FROM scroll_sessions GROUP BY appPackage ORDER BY seg DESC;
    ```
 
+> **Ojo:** las imágenes recientes de **emulador no traen el binario `sqlite3`**
+> (`run-as: exec failed for sqlite3: No such file or directory`). En emulador usar el
+> Database Inspector, o el log debug `AutoScrollUsage` (confirma cada escritura), o sacar el
+> `.db` con `run-as ... cat` y abrirlo con DB Browser. El `sqlite3` por `run-as` de abajo
+> aplica a devices físicos que sí lo incluyen.
+
 ### b) Por adb (build debug → `run-as`)
 ```bash
 ADB="$LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"   # ajustar ruta
@@ -157,6 +163,57 @@ arranca, salir de la app y verificar que la sesión termina, leer las sesiones d
 powershell -ExecutionPolicy Bypass -File scripts\manual_autoscroll_test.ps1
 ```
 
+### E2E semi-automatizado de una sesión completa — `scripts/e2e_youtube_session.ps1`
+
+Reproduce **una sesión real en YouTube Shorts** de punta a punta y la **verifica sola**
+(PASS/FAIL) leyendo logcat y Room. Escenario:
+
+1. Abre YouTube en el feed de Shorts (deep link `https://www.youtube.com/shorts`).
+2. **Inicia** la sesión de forma determinista (ver hook de debug abajo), atribuida a YouTube.
+3. Corre 30 s de auto-scroll (swipes reales vía `dispatchGesture`).
+4. **Like** en el video (doble-tap real); si Shorts no lo expone como evento de accesibilidad,
+   cae al hook `E2E_INTERACT`, que ejercita **el mismo camino de producción** de la pausa.
+5. La sesión **se pausa** y **reanuda sola** tras ~3 s sin interacción (`pauseOnTouchSeconds`).
+6. Corre otros 30 s.
+7. **Sale** de YouTube (HOME) → la sesión **termina** al dejar la app.
+8. Verifica el corte (`WellbeingService` abajo) y que la **fila quedó en Room**.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\e2e_youtube_session.ps1   # -RunSeconds 30
+```
+
+Toda la observabilidad viene de logs **solo-debug** (`BuildConfig.DEBUG`): tags
+`AutoScrollSvc` / `AutoScrollEngine` (estado, swipes, pausa/reanudación, corte) y
+`AutoScrollUsage` (confirma la escritura en Room tras `dao.insert()`).
+
+#### Hook de control e2e (solo build debug)
+
+El tap de 3 dedos **no es simulable** en emulador y la activación por swipes **no es
+confiable** en el player de Shorts (ver hallazgo abajo). Para arrancar/parar/pausar la
+sesión de forma determinista, `AutoScrollService` registra un `BroadcastReceiver`
+**únicamente cuando `BuildConfig.DEBUG`** (no existe en release). Acciones:
+
+```powershell
+$PKG = "com.freelanzer.autoscroller.debug"
+# Iniciar (extra opcional pkg = app atribuida a la sesión)
+adb shell am broadcast -a com.freelanzer.autoscroller.E2E_START   -p $PKG --es pkg com.google.android.youtube
+# Simular una interacción del usuario (like/toque) -> pausa con auto-resume
+adb shell am broadcast -a com.freelanzer.autoscroller.E2E_INTERACT -p $PKG
+# Terminar la sesión
+adb shell am broadcast -a com.freelanzer.autoscroller.E2E_STOP    -p $PKG
+# Volcar la base Room a logcat (tag AutoScrollUsage), leyendo por UsageRepository
+adb shell am broadcast -a com.freelanzer.autoscroller.E2E_DUMP    -p $PKG
+# Borrar todo el historial de uso (dao.clear())
+adb shell am broadcast -a com.freelanzer.autoscroller.E2E_CLEAR   -p $PKG
+```
+
+`E2E_INTERACT` llama exactamente al mismo `ScrollEngine.notifyUserInteraction(pauseOnTouchMs)`
+que dispara una interacción real, así que la pausa/reanudación testeada es la de producción.
+`E2E_DUMP` vuelca todas las filas + agregaciones **leyendo por `UsageRepository`** (el mismo
+camino que la app), así que también verifica las queries de lectura; útil porque el emulador
+no trae `sqlite3`. `E2E_CLEAR` resetea la base sin tocar ajustes ni el servicio (a diferencia
+de `pm clear`).
+
 ### Hallazgo importante — activación por swipes y eventos de accesibilidad
 
 Verificado en emulador con logging (`DEBUG_LOG=true` en `AutoScrollService` +
@@ -174,6 +231,11 @@ Verificado en emulador con logging (`DEBUG_LOG=true` en `AutoScrollService` +
   accesibilidad sobre apps de terceros heterogéneas.
 - **El tap de 3 dedos es el activador universal confiable** (gesto a nivel sistema,
   independiente de la app) — recomendado para YouTube Shorts.
+- **El "like" (doble-tap) en el player de Shorts tampoco se expone** como `TYPE_VIEW_CLICKED`
+  / `TYPE_VIEW_LONG_CLICKED` al servicio de accesibilidad → la pausa por interacción **no
+  dispara** por un like en Shorts. Verificado con `e2e_youtube_session.ps1` (cae al hook
+  `E2E_INTERACT`). En feeds `RecyclerView` (TikTok / IG Reels) un toque sí suele emitir el
+  evento. La lógica de pausa en sí (production path) queda igualmente verificada por el hook.
 - **Corte de sesión:** al salir de la app de la sesión hacia el launcher u otra app no
   habilitada (`TYPE_WINDOW_STATE_CHANGED`), el auto-scroll se detiene. Se ignoran paquetes
   de UI de sistema transitorios (`com.android.systemui`, `android`).

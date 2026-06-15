@@ -1,22 +1,29 @@
-# E2E manual de una sesion de auto-scroll en YouTube Shorts (Windows / PowerShell).
+# E2E de una sesion de auto-scroll en YouTube Shorts (Windows / PowerShell).
 # (Texto ASCII a proposito: powershell.exe 5.1 lee .ps1 en ANSI y rompe acentos.)
 #
-# Flujo (simple y generico), partiendo de la pantalla de inicio:
-#   1. Abre YouTube.
-#   2. Toca la pestania Shorts.
-#   3. Hace 3 swipes hacia arriba para activar el auto-scroller.
-#   4. Verifica que se activo (WellbeingService en foreground).
-#   5. Lo deja correr 30 s.
-#   6. Hace un "like" = un toque en la pantalla (pausa por interaccion).
-#   7. Lo deja reanudar y correr otros 30 s.
-#   8. Cierra YouTube (Home) para terminar la sesion.
-#   9. Verifica que el auto-scroll YA NO este activo.
+# Escenario verificado (el que pidio el usuario):
+#   1. Abre YouTube en el feed de Shorts (video vertical).
+#   2. Inicia la sesion de auto-scroll de forma DETERMINISTA via el receiver de debug
+#      (broadcast E2E_START con la app atribuida a YouTube). El tap de 3 dedos no es
+#      simulable en emulador y la activacion por swipes no es confiable en el player de
+#      Shorts; por eso el arranque usa el hook de debug. Ver TESTING.md.
+#   3. Corre $RunSeconds s de auto-scroll.
+#   4. "Like" en el video (doble-tap real). Si YouTube Shorts NO lo expone como evento de
+#      accesibilidad (TYPE_VIEW_CLICKED) -> se usa el hook E2E_INTERACT como fallback, que
+#      ejercita EXACTAMENTE el mismo camino de produccion (notifyUserInteraction -> pausa).
+#   5. La sesion se PAUSA y se REANUDA sola tras ~3 s sin interaccion (pauseOnTouchSeconds).
+#   6. Corre otros $RunSeconds s de auto-scroll.
+#   7. Sale de la app (HOME) -> la sesion TERMINA al dejar YouTube.
+#   8. Verifica el corte (WellbeingService abajo) y que la sesion quedo registrada en Room.
 #
-# Requisitos: app instalada y servicio de accesibilidad habilitado
-#   (ver scripts/manual_autoscroll_test.ps1 pasos 1-2, o habilitarlo a mano).
+# Toda la verificacion se hace leyendo logcat (tags AutoScrollSvc / AutoScrollEngine, que
+# solo loguean en build debug) y la base Room via run-as.
+#
+# Requisitos: build DEBUG instalada (./gradlew :app:installDebug). El script habilita el
+# servicio de accesibilidad por adb si hace falta.
 #
 # Uso:  powershell -ExecutionPolicy Bypass -File scripts\e2e_youtube_session.ps1
-#       (opcional) -Serial emulator-5554
+#       (opcional) -Serial emulator-5554  -RunSeconds 30
 
 param(
     [string]$Serial = "",
@@ -26,65 +33,128 @@ param(
 $ErrorActionPreference = "Stop"
 $ADB = "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe"
 $PKG = "com.freelanzer.autoscroller.debug"
+$SVC = "$PKG/com.freelanzer.autoscroller.service.accessibility.AutoScrollService"
+$YT  = "com.google.android.youtube"
 
-# Coordenadas para ~1080-1280 px de ancho (ajustar si tu pantalla difiere).
-$SHORTS_X = 482; $SHORTS_Y = 2700
-$SWIPE = @(640, 2200, 640, 600, 250)   # x1 y1 x2 y2 duracion (swipe hacia arriba)
-$TAP_X = 640; $TAP_Y = 1400            # toque central (= "like")
-
-function Adb { param([Parameter(ValueFromRemainingArguments=$true)]$a)
-    if ($Serial) { & $ADB -s $Serial @a } else { & $ADB @a }
+# Funcion simple (sin param block) para que TODOS los argumentos caigan en el $args
+# automatico y ningun flag de adb (-c, -d, -s, -a, -p...) colisione con un nombre de parametro.
+function Adb {
+    if ($Serial) { & $ADB -s $Serial @args } else { & $ADB @args }
 }
-function Active {
+function WellbeingRefs {
     # >=1 => auto-scroll activo (WellbeingService en foreground)
     (Adb shell dumpsys activity services $PKG 2>&1 | Select-String "WellbeingService").Count
 }
-
-Write-Host "1) Inicio -> abrir YouTube" -ForegroundColor Cyan
-Adb shell input keyevent KEYCODE_HOME
-Start-Sleep -Seconds 1
-Adb shell monkey -p com.google.android.youtube -c android.intent.category.LAUNCHER 1 | Out-Null
-Start-Sleep -Seconds 6
-
-Write-Host "2) Tocar Shorts" -ForegroundColor Cyan
-Adb shell input tap $SHORTS_X $SHORTS_Y
-Start-Sleep -Seconds 6
-
-Write-Host "3) 3 swipes hacia arriba (activar)" -ForegroundColor Cyan
-for ($i = 1; $i -le 3; $i++) {
-    Adb shell input swipe $SWIPE[0] $SWIPE[1] $SWIPE[2] $SWIPE[3] $SWIPE[4]
-    Start-Sleep -Milliseconds 800
+function Cast { param([string]$action, [string[]]$extra)
+    $cmd = @("shell","am","broadcast","-a","com.freelanzer.autoscroller.$action","-p",$PKG)
+    if ($extra) { $cmd += $extra }
+    Adb @cmd | Out-Null
 }
-Start-Sleep -Seconds 2
+$script:pass = $true
+function Check { param([string]$label, [bool]$ok)
+    if ($ok) { Write-Host ("   [OK]   " + $label) -ForegroundColor Green }
+    else     { Write-Host ("   [FAIL] " + $label) -ForegroundColor Red; $script:pass = $false }
+}
 
-Write-Host "4) Verificar activacion" -ForegroundColor Cyan
-Write-Host "   auto-scroll activo: $(Active)  (>=1 = OK)" -ForegroundColor Green
+# --- 0) Preparacion ------------------------------------------------------------
+Write-Host "0) Preparacion (servicio de accesibilidad + screen size)" -ForegroundColor Cyan
+$enabled = (Adb shell settings get secure enabled_accessibility_services 2>&1)
+if ("$enabled" -notmatch [regex]::Escape($SVC)) {
+    Write-Host "   habilitando servicio de accesibilidad..." -ForegroundColor DarkYellow
+    Adb shell settings put secure enabled_accessibility_services $SVC | Out-Null
+    Adb shell settings put secure accessibility_enabled 1 | Out-Null
+    Start-Sleep -Seconds 2
+}
+$sizeLine = (Adb shell wm size 2>&1 | Select-String "Physical size").ToString()
+if ($sizeLine -match "(\d+)x(\d+)") { $W = [int]$Matches[1]; $H = [int]$Matches[2] } else { $W = 1080; $H = 2400 }
+$CX = [int]($W / 2); $CY = [int]($H / 2)
+Write-Host "   pantalla ${W}x${H}, centro ($CX,$CY)" -ForegroundColor Gray
 
-Write-Host "5) Correr $RunSeconds s..." -ForegroundColor Cyan
-Start-Sleep -Seconds $RunSeconds
+Adb logcat -c
+Adb shell am force-stop $YT 2>&1 | Out-Null
 
-Write-Host "6) Like = un toque en pantalla (pausa por interaccion)" -ForegroundColor Cyan
-Adb shell input tap $TAP_X $TAP_Y
-Start-Sleep -Seconds 2
-Write-Host "   activo tras toque: $(Active)" -ForegroundColor Green
+# --- 1) Abrir YouTube Shorts ---------------------------------------------------
+Write-Host "1) Abrir YouTube Shorts" -ForegroundColor Cyan
+Adb shell am start -a android.intent.action.VIEW -d "https://www.youtube.com/shorts" 2>&1 | Out-Null
+Start-Sleep -Seconds 8
 
-Write-Host "7) Reanudar y correr otros $RunSeconds s..." -ForegroundColor Cyan
-Start-Sleep -Seconds $RunSeconds
-Write-Host "   activo: $(Active)" -ForegroundColor Green
-
-Write-Host "8) Cerrar YouTube (Home) -> terminar sesion" -ForegroundColor Cyan
-Adb shell input keyevent KEYCODE_HOME
+# --- 2) Iniciar sesion (hook de debug, atribuida a YouTube) --------------------
+Write-Host "2) Iniciar auto-scroll (broadcast E2E_START, pkg=YouTube)" -ForegroundColor Cyan
+Cast "E2E_START" @("--es","pkg",$YT)
 Start-Sleep -Seconds 3
+Check "WellbeingService activo tras START" ((WellbeingRefs) -ge 1)
 
-Write-Host "9) Verificar que NO siga activo" -ForegroundColor Cyan
-$final = Active
-if ($final -eq 0) {
-    Write-Host "   OK: sesion terminada (auto-scroll inactivo)" -ForegroundColor Green
+# --- 3) Correr fase 1 ----------------------------------------------------------
+Write-Host "3) Auto-scroll por $RunSeconds s (fase 1)..." -ForegroundColor Cyan
+Start-Sleep -Seconds $RunSeconds
+
+# --- 4) Like (doble-tap real; fallback al hook si no se detecta) ---------------
+Write-Host "4) Like en el video (doble-tap real)" -ForegroundColor Cyan
+$before = (Adb logcat -d -s AutoScrollSvc:D 2>&1 | Select-String "detectada").Count
+Adb shell input tap $CX $CY | Out-Null
+Start-Sleep -Milliseconds 180
+Adb shell input tap $CX $CY | Out-Null
+Start-Sleep -Seconds 2
+$after = (Adb logcat -d -s AutoScrollSvc:D 2>&1 | Select-String "detectada").Count
+if ($after -gt $before) {
+    Write-Host "   like REAL detectado como evento de accesibilidad (pausa por interaccion)" -ForegroundColor Green
+    $likeMode = "real"
 } else {
-    Write-Host ("   ATENCION: sigue activo (" + $final + " refs)") -ForegroundColor Red
+    Write-Host "   el player de Shorts no expuso el like como TYPE_VIEW_CLICKED" -ForegroundColor DarkYellow
+    Write-Host "   -> fallback determinista: broadcast E2E_INTERACT (mismo camino de produccion)" -ForegroundColor DarkYellow
+    Cast "E2E_INTERACT"
+    $likeMode = "hook"
 }
 
+# --- 5) Verificar pausa + reanudacion ~3 s -------------------------------------
+Write-Host "5) Esperando reanudacion (~3 s sin interaccion)..." -ForegroundColor Cyan
+Start-Sleep -Seconds 5
+
+# --- 6) Correr fase 2 ----------------------------------------------------------
+Write-Host "6) Auto-scroll por $RunSeconds s (fase 2)..." -ForegroundColor Cyan
+Start-Sleep -Seconds $RunSeconds
+
+# --- 7) Salir de la app -> terminar sesion -------------------------------------
+Write-Host "7) HOME (salir de YouTube) -> terminar sesion" -ForegroundColor Cyan
+Adb shell input keyevent KEYCODE_HOME | Out-Null
+Start-Sleep -Seconds 3
+Check "WellbeingService inactivo tras salir" ((WellbeingRefs) -eq 0)
+
+# --- 8) Verificacion final por logcat ------------------------------------------
+Write-Host "8) Verificacion por logcat" -ForegroundColor Cyan
+$log = Adb logcat -d -s AutoScrollSvc:D AutoScrollEngine:D 2>&1
+function Has { param([string]$pat) ($log | Select-String -SimpleMatch $pat).Count -ge 1 }
+
+Check "sesion iniciada en YouTube"        (($log | Select-String "INICIADA en '$YT'").Count -ge 1)
+$swipes1 = ($log | Select-String "swipe #").Count
+Check "hubo swipes de auto-scroll"        ($swipes1 -ge 2)
+Check "pausa por interaccion"             (Has "PAUSADO por")
+Check "reanudacion automatica"            (Has "REANUDADO tras")
+Check "sesion terminada al salir"         (Has "TERMINADA")
+Check "corte por salir de la app"         (Has "deteniendo")
+
+# Delta pausa->reanudacion (best-effort, debe rondar pauseOnTouchSeconds = 3 s)
+$pa = ($log | Select-String "PAUSADO por"   | Select-Object -First 1)
+$re = ($log | Select-String "REANUDADO tras"| Select-Object -First 1)
+if ($pa -and $re) {
+    function Stamp($line) { if ("$line" -match "(\d\d):(\d\d):(\d\d)\.(\d\d\d)") {
+        return ([int]$Matches[1]*3600 + [int]$Matches[2]*60 + [int]$Matches[3]) * 1000 + [int]$Matches[4] } return $null }
+    $d = (Stamp $re) - (Stamp $pa)
+    if ($d -ne $null) { Write-Host ("   pausa -> reanudacion: {0} ms (esperado ~3000)" -f $d) -ForegroundColor Gray }
+}
+
+# --- 9) Verificar registro en Room ---------------------------------------------
+# El emulador no trae el binario sqlite3, asi que confirmamos la escritura real con el
+# log de RoomUsageRepository (tag AutoScrollUsage, solo debug) emitido tras dao.insert().
+Write-Host "9) Sesion registrada en Room (autoscroller_usage.db)" -ForegroundColor Cyan
+$usage = Adb logcat -d -s AutoScrollUsage:D 2>&1
+$row = ($usage | Select-String "sesion persistida" | Select-Object -Last 1)
+Write-Host ("   " + ("$row").Trim()) -ForegroundColor Gray
+Check "fila Room con la app YouTube" ("$row" -match "pkg=$([regex]::Escape($YT))")
+Check "fila Room con swipeCount > 0" ("$row" -match "swipes=([1-9]\d*)")
+
+# --- Resumen -------------------------------------------------------------------
 Write-Host ""
-Write-Host "Nota: la activacion por swipes requiere que la app emita TYPE_VIEW_SCROLLED." -ForegroundColor DarkYellow
-Write-Host "El player fullscreen de YouTube Shorts puede no emitirlos; en ese caso usar el" -ForegroundColor DarkYellow
-Write-Host "tap de 3 dedos (device real) como activador. Ver TESTING.md." -ForegroundColor DarkYellow
+Write-Host ("Modo de like: " + $likeMode) -ForegroundColor Gray
+if ($script:pass) { Write-Host "RESULTADO: PASS" -ForegroundColor Green }
+else              { Write-Host "RESULTADO: FAIL (ver [FAIL] arriba)" -ForegroundColor Red; exit 1 }

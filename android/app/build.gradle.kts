@@ -46,6 +46,8 @@ android {
 
     buildFeatures {
         compose = true
+        // BuildConfig.DEBUG gatea el logging y el receiver de control de los tests e2e.
+        buildConfig = true
     }
 
     packaging {

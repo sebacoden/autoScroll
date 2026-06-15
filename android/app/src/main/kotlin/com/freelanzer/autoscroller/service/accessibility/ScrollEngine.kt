@@ -5,7 +5,9 @@ import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.os.SystemClock
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.WindowManager
+import com.freelanzer.autoscroller.BuildConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -45,25 +47,38 @@ class ScrollEngine(
      */
     fun notifyUserInteraction(pauseMs: Long) {
         resumeAtMs = SystemClock.elapsedRealtime() + pauseMs
+        logd { "interacción del usuario → swipes suspendidos ${pauseMs}ms" }
     }
 
     /** Inicia el bucle de scroll. Idempotente: si ya está corriendo, no hace nada. */
     fun start(intervalProvider: () -> Long) {
         if (isRunning) return
         resumeAtMs = 0L
+        logd { "engine iniciado" }
         job = scope.launch {
             // Pequeño margen para que el usuario abandone la app antes del primer swipe.
             delay(STARTUP_DELAY_MS)
+            var paused = false
+            var swipeCount = 0
             while (isActive) {
                 val now = SystemClock.elapsedRealtime()
                 if (now < resumeAtMs) {
                     // Pausa temporal por interacción del usuario: esperar y reevaluar
                     // (puede haberse extendido mientras tanto).
+                    if (!paused) {
+                        paused = true
+                        logd { "PAUSADO por interacción (reanuda en ${resumeAtMs - now}ms)" }
+                    }
                     delay(resumeAtMs - now)
                     continue
                 }
+                if (paused) {
+                    paused = false
+                    logd { "REANUDADO tras pausa por interacción" }
+                }
                 performSwipeUp()
                 onScrollPerformed(SystemClock.elapsedRealtime())
+                logd { "swipe #${++swipeCount}" }
                 delay(intervalProvider().coerceAtLeast(MIN_INTERVAL_MS))
             }
         }
@@ -73,6 +88,12 @@ class ScrollEngine(
         job?.cancel()
         job = null
         resumeAtMs = 0L
+        logd { "engine detenido" }
+    }
+
+    /** Log de debug barato: el lambda solo se evalúa en builds debug. */
+    private inline fun logd(message: () -> String) {
+        if (BuildConfig.DEBUG) Log.d(TAG, message())
     }
 
     private fun performSwipeUp() {
@@ -101,6 +122,7 @@ class ScrollEngine(
     }
 
     private companion object {
+        const val TAG: String = "AutoScrollEngine"
         const val STARTUP_DELAY_MS: Long = 800L
         const val SWIPE_DURATION_MS: Long = 250L
         const val SWIPE_START_RATIO: Float = 0.80f

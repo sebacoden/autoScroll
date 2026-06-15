@@ -1,5 +1,7 @@
 package com.freelanzer.autoscroller.data.usage
 
+import android.util.Log
+import com.freelanzer.autoscroller.BuildConfig
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -15,6 +17,9 @@ interface UsageRepository {
     fun observeSessions(): Flow<List<ScrollSessionEntity>>
     fun observeUsageByApp(): Flow<List<AppUsage>>
     fun observeTotalSwipes(): Flow<Int>
+
+    /** Borra todo el historial de uso (reset de bienestar / utilidad de testing). */
+    suspend fun clear()
 }
 
 @Singleton
@@ -38,9 +43,21 @@ class RoomUsageRepository @Inject constructor(
                 appPackage = appPackage,
             ),
         )
+        if (BuildConfig.DEBUG) {
+            Log.d(
+                "AutoScrollUsage",
+                "sesion persistida en Room: pkg=$appPackage swipes=$swipeCount " +
+                    "dur=${endTime - startTime}ms",
+            )
+        }
     }
 
     override fun observeSessions(): Flow<List<ScrollSessionEntity>> = dao.observeAll()
     override fun observeUsageByApp(): Flow<List<AppUsage>> = dao.observeUsageByApp()
     override fun observeTotalSwipes(): Flow<Int> = dao.observeTotalSwipes()
+
+    override suspend fun clear() {
+        dao.clear()
+        if (BuildConfig.DEBUG) Log.d("AutoScrollUsage", "historial de uso borrado")
+    }
 }

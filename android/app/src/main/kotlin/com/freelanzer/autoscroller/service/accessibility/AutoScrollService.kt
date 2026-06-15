@@ -3,13 +3,19 @@ package com.freelanzer.autoscroller.service.accessibility
 import android.accessibilityservice.AccessibilityGestureEvent
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.SystemClock
+import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
+import com.freelanzer.autoscroller.BuildConfig
 import com.freelanzer.autoscroller.data.settings.SettingsRepository
+import com.freelanzer.autoscroller.data.usage.UsageRepository
 import com.freelanzer.autoscroller.domain.controller.ScrollController
 import com.freelanzer.autoscroller.domain.controller.ScrollState
 import com.freelanzer.autoscroller.domain.gesture.SwipeActivationDetector
@@ -23,8 +29,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 
 /**
  * Servicio de accesibilidad que orquesta el auto-scroll.
@@ -49,6 +57,7 @@ class AutoScrollService : AccessibilityService() {
     @Inject lateinit var controller: ScrollController
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var sessionRecorder: SessionRecorder
+    @Inject lateinit var usageRepository: UsageRepository
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private lateinit var engine: ScrollEngine
@@ -72,6 +81,14 @@ class AutoScrollService : AccessibilityService() {
     private val wellbeingIntent: Intent
         get() = Intent(this, WellbeingService::class.java)
 
+    /**
+     * Receiver de control para los tests e2e — **solo registrado en builds debug**. Permite
+     * disparar el inicio/fin de sesión y simular una interacción del usuario desde `adb`,
+     * de forma determinista (el tap de 3 dedos no es simulable y la activación por swipes no
+     * es confiable en todas las apps). No existe en release. Ver `scripts/e2e_youtube_session.ps1`.
+     */
+    private var debugControlReceiver: BroadcastReceiver? = null
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         engine = ScrollEngine(
@@ -79,6 +96,8 @@ class AutoScrollService : AccessibilityService() {
             scope = serviceScope,
             onScrollPerformed = controller::onScrollPerformed,
         )
+
+        if (BuildConfig.DEBUG) registerDebugControlReceiver()
 
         observerJob = controller.state
             .onEach { state -> onStateChanged(state) }
@@ -117,12 +136,15 @@ class AutoScrollService : AccessibilityService() {
                 sessionRecorder.onSessionStarted(lastForegroundPackage)
                 engine.start(intervalProvider = { controller.intervalMillis.value })
                 ContextCompat.startForegroundService(this, wellbeingIntent)
+                logd { "SESIÓN INICIADA en '$lastForegroundPackage'" }
             }
 
             ScrollState.Idle -> {
                 engine.stop()
-                sessionRecorder.onSessionEnded(swipeCount = controller.scrollCount.value)
+                val swipes = controller.scrollCount.value
+                sessionRecorder.onSessionEnded(swipeCount = swipes)
                 stopService(wellbeingIntent)
+                logd { "SESIÓN TERMINADA ('$activeSessionPackage', $swipes swipes)" }
             }
         }
     }
@@ -137,6 +159,7 @@ class AutoScrollService : AccessibilityService() {
         when (controller.state.value) {
             ScrollState.Scrolling -> {
                 if (hasLeftSessionApp(event)) {
+                    logd { "salió de la app de sesión → '${event.packageName}', deteniendo" }
                     controller.stop()
                 } else {
                     handleUserInteractionWhileScrolling(event, now)
@@ -177,7 +200,10 @@ class AutoScrollService : AccessibilityService() {
             AccessibilityEvent.TYPE_VIEW_LONG_CLICKED -> true
             else -> false
         }
-        if (isUserInteraction) engine.notifyUserInteraction(pauseOnTouchMs)
+        if (isUserInteraction) {
+            logd { "interacción detectada (${eventTypeName(event.eventType)})" }
+            engine.notifyUserInteraction(pauseOnTouchMs)
+        }
     }
 
     /**
@@ -206,6 +232,7 @@ class AutoScrollService : AccessibilityService() {
         if (!significant) return
 
         if (swipeActivationDetector.onSwipeUp(now, requiredSwipes)) {
+            logd { "activación por $requiredSwipes swipes en '$lastForegroundPackage'" }
             controller.start()
         }
     }
@@ -245,11 +272,109 @@ class AutoScrollService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        debugControlReceiver?.let { runCatching { unregisterReceiver(it) } }
+        debugControlReceiver = null
         serviceScope.cancel()
         super.onDestroy()
     }
 
+    /**
+     * Registra el receiver de control e2e (solo debug). Acciones:
+     *  - [ACTION_START]: inicia la sesión; extra opcional `pkg` fuerza el paquete atribuido
+     *    (útil para que la sesión quede registrada a nombre de YouTube).
+     *  - [ACTION_STOP]: termina la sesión.
+     *  - [ACTION_INTERACT]: simula una interacción del usuario (like/toque) → pausa con
+     *    auto-resume, igual que [handleUserInteractionWhileScrolling].
+     */
+    private fun registerDebugControlReceiver() {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                when (intent.action) {
+                    ACTION_START -> {
+                        intent.getStringExtra(EXTRA_PACKAGE)
+                            ?.takeIf { it.isNotBlank() }
+                            ?.let { lastForegroundPackage = it }
+                        logd { "[debug] ACTION_START (pkg='$lastForegroundPackage')" }
+                        controller.start()
+                    }
+                    ACTION_STOP -> {
+                        logd { "[debug] ACTION_STOP" }
+                        controller.stop()
+                    }
+                    ACTION_INTERACT -> {
+                        logd { "[debug] ACTION_INTERACT (simula like/toque)" }
+                        engine.notifyUserInteraction(pauseOnTouchMs)
+                    }
+                    ACTION_DUMP -> {
+                        logd { "[debug] ACTION_DUMP (volcando Room)" }
+                        serviceScope.launch { dumpUsageDatabase() }
+                    }
+                    ACTION_CLEAR -> {
+                        logd { "[debug] ACTION_CLEAR (borrando historial Room)" }
+                        serviceScope.launch { usageRepository.clear() }
+                    }
+                }
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(ACTION_START)
+            addAction(ACTION_STOP)
+            addAction(ACTION_INTERACT)
+            addAction(ACTION_DUMP)
+            addAction(ACTION_CLEAR)
+        }
+        ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
+        debugControlReceiver = receiver
+        logd { "[debug] receiver de control e2e registrado" }
+    }
+
+    /**
+     * Vuelca el contenido de la base de uso (Room) a logcat **leyendo por el camino real de
+     * la app** (`UsageRepository`), no por SQLite crudo — así el dump verifica también que
+     * las queries de lectura devuelven lo persistido. Solo se invoca desde ACTION_DUMP (debug).
+     */
+    private suspend fun dumpUsageDatabase() {
+        val sessions = usageRepository.observeSessions().first()
+        val total = usageRepository.observeTotalSwipes().first()
+        val byApp = usageRepository.observeUsageByApp().first()
+        Log.d(DB_TAG, "==== DUMP Room: ${sessions.size} sesiones, total $total swipes ====")
+        sessions.forEach { s ->
+            Log.d(
+                DB_TAG,
+                "sesion id=${s.id} pkg=${s.appPackage} swipes=${s.swipeCount} " +
+                    "dur=${s.endTime - s.startTime}ms start=${s.startTime} end=${s.endTime}",
+            )
+        }
+        byApp.forEach { u ->
+            Log.d(DB_TAG, "porApp pkg=${u.appPackage} dur=${u.totalDurationMs}ms sesiones=${u.sessionCount}")
+        }
+        Log.d(DB_TAG, "==== FIN DUMP ====")
+    }
+
+    /** Log de debug barato: el lambda solo se evalúa en builds debug. */
+    private inline fun logd(message: () -> String) {
+        if (BuildConfig.DEBUG) Log.d(TAG, message())
+    }
+
+    private fun eventTypeName(type: Int): String = when (type) {
+        AccessibilityEvent.TYPE_VIEW_SCROLLED -> "scrolled"
+        AccessibilityEvent.TYPE_VIEW_CLICKED -> "clicked"
+        AccessibilityEvent.TYPE_VIEW_LONG_CLICKED -> "longClicked"
+        else -> type.toString()
+    }
+
     private companion object {
+        const val TAG: String = "AutoScrollSvc"
+        const val DB_TAG: String = "AutoScrollUsage"
+
+        // Acciones del receiver de control e2e (solo debug). Ver registerDebugControlReceiver().
+        const val ACTION_START: String = "com.freelanzer.autoscroller.E2E_START"
+        const val ACTION_STOP: String = "com.freelanzer.autoscroller.E2E_STOP"
+        const val ACTION_INTERACT: String = "com.freelanzer.autoscroller.E2E_INTERACT"
+        const val ACTION_DUMP: String = "com.freelanzer.autoscroller.E2E_DUMP"
+        const val ACTION_CLEAR: String = "com.freelanzer.autoscroller.E2E_CLEAR"
+        const val EXTRA_PACKAGE: String = "pkg"
+
         /**
          * Ventana posterior a cada `dispatchGesture` durante la cual los eventos de scroll
          * se atribuyen a nuestro propio swipe (y no a una acción manual del usuario).

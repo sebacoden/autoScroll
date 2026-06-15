@@ -31,6 +31,7 @@ class SessionRecorderTest {
         override fun observeSessions(): Flow<List<ScrollSessionEntity>> = emptyFlow()
         override fun observeUsageByApp(): Flow<List<AppUsage>> = emptyFlow()
         override fun observeTotalSwipes(): Flow<Int> = emptyFlow()
+        override suspend fun clear() { recorded.clear() }
     }
 
     private var fakeNow = 0L
