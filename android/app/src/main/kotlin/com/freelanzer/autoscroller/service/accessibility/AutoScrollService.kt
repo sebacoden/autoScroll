@@ -218,18 +218,41 @@ class AutoScrollService : AccessibilityService() {
      */
     private fun handleSwipeActivation(event: AccessibilityEvent, now: Long) {
         if (!swipeActivationEnabled) return
-        if (event.eventType != AccessibilityEvent.TYPE_VIEW_SCROLLED) return
+
+        val isScrollEvent = event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED
+        val isContentChange = event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+
+        // 👇 clave: aceptar ambos tipos de eventos
+        if (!isScrollEvent && !isContentChange) return
+
         if (lastForegroundPackage !in activationApps) {
             swipeActivationDetector.reset()
             return
         }
 
-        val significant = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            kotlin.math.abs(event.scrollDeltaY) >= MIN_SWIPE_DELTA_PX
-        } else {
-            true
+        val significant = when {
+            // Caso ideal: scroll real con delta
+            isScrollEvent && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P -> {
+                kotlin.math.abs(event.scrollDeltaY) >= MIN_SWIPE_DELTA_PX
+            }
+
+            // Scroll sin delta (API vieja o raro)
+            isScrollEvent -> true
+
+            // 👇 CLAVE para dispositivos físicos
+            isContentChange -> true
+
+            else -> false
         }
+
         if (!significant) return
+
+        // 👇 log MUY útil para debug real
+        logd {
+            "event=${eventTypeName(event.eventType)} " +
+                    "deltaY=${if (Build.VERSION.SDK_INT >= 28) event.scrollDeltaY else "NA"} " +
+                    "pkg=$lastForegroundPackage"
+        }
 
         if (swipeActivationDetector.onSwipeUp(now, requiredSwipes)) {
             logd { "activación por $requiredSwipes swipes en '$lastForegroundPackage'" }

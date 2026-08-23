@@ -132,9 +132,9 @@ class ScrollEngine(
     private companion object {
         const val TAG: String = "AutoScrollEngine"
         const val STARTUP_DELAY_MS: Long = 800L
-        const val SWIPE_DURATION_MS: Long = 250L
-        const val SWIPE_START_RATIO: Float = 0.80f
-        const val SWIPE_END_RATIO: Float = 0.20f
+        const val SWIPE_DURATION_MS: Long = 120L
+        const val SWIPE_START_RATIO: Float = 0.50f
+        const val SWIPE_END_RATIO: Float = 0.10f
         const val MIN_INTERVAL_MS: Long = 200L
     }
 }

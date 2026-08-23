@@ -6,6 +6,8 @@ import org.junit.Test
 /**
  * Tests del [SwipeActivationDetector]. Clase pura → JVM puro.
  * Usamos `minGapMs = 0` salvo en los tests de debounce, para aislar la lógica de ventana.
+ *
+ * Mantengo los tests originales tal cual y agrego algunos para la señal "global".
  */
 class SwipeActivationDetectorTest {
 
@@ -74,5 +76,53 @@ class SwipeActivationDetectorTest {
         assertThat(d.onSwipeUp(1_500L, 3)).isFalse()
         assertThat(d.onSwipeUp(2_000L, 3)).isFalse()
         assertThat(d.onSwipeUp(2_500L, 3)).isTrue()
+    }
+
+    // -----------------------
+    // Tests nuevos para "señal global"
+    // -----------------------
+
+    @Test
+    fun `global signal activates in EITHER mode even if swipe count not reached`() {
+        val d = detector()
+        // Por defecto SWIPES_ONLY no activaría con requiredSwipes alto
+        assertThat(d.onSwipeUp(0L, requiredSwipes = 5)).isFalse()
+
+        // Activamos modo EITHER y seteamos señal global de confianza alta
+        d.setActivationMode(SwipeActivationDetector.ActivationMode.EITHER)
+        d.setGlobalGesture(detected = true, confidence = 0.9f)
+
+        // Llamada a onSwipeUp debe devolver true debido a la señal global
+        assertThat(d.onSwipeUp(10L, requiredSwipes = 5)).isTrue()
+    }
+
+    @Test
+    fun `both mode requires both conditions`() {
+        val d = detector()
+
+        d.setActivationMode(SwipeActivationDetector.ActivationMode.BOTH)
+
+        // Solo swipes → no activa
+        d.onSwipeUp(0L, 3)
+        d.onSwipeUp(500L, 3)
+        assertThat(d.onSwipeUp(1_000L, 3)).isFalse()
+
+        // Con señal global + swipes → activa
+        val d2 = detector()
+        d2.setActivationMode(SwipeActivationDetector.ActivationMode.BOTH)
+        d2.setGlobalGesture(true, 0.9f)
+
+        d2.onSwipeUp(0L, 3)
+        d2.onSwipeUp(500L, 3)
+        assertThat(d2.onSwipeUp(1_000L, 3)).isTrue()
+    }
+
+    @Test
+    fun `global confidence below threshold does not activate in GLOBAL_ONLY mode`() {
+        val d = detector()
+        // Modo GLOBAL_ONLY con confianza baja -> no activa
+        d.setActivationMode(SwipeActivationDetector.ActivationMode.GLOBAL_ONLY)
+        d.setGlobalGesture(detected = true, confidence = 0.1f)
+        assertThat(d.onSwipeUp(0L, requiredSwipes = 10)).isFalse()
     }
 }

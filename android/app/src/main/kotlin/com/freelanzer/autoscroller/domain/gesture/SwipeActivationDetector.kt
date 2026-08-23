@@ -1,40 +1,89 @@
 package com.freelanzer.autoscroller.domain.gesture
 
 /**
- * Cuenta "N swipes verticales en una ventana de tiempo" para activar el auto-scroll dentro
- * de una app habilitada.
- *
- * Clase pura (sin Android): el caller pasa la marca temporal monotónica de cada scroll y el
- * umbral [requiredSwipes] vigente (configurable en runtime).
- *
- * **Debounce de ráfagas:** un solo gesto físico de swipe genera *varios* eventos de scroll
- * en pocos ms (fling + settle del RecyclerView, con deltaY de signo mezclado). Para que el
- * conteo mapee 1:1 con gestos del usuario, se ignoran eventos que lleguen dentro de
- * [minGapMs] del último contado. Por eso NO se filtra por signo de deltaY en el caller:
- * cualquier scroll vertical significativo cuenta, y el debounce agrupa la ráfaga.
- *
- *  - Eventos dentro de [minGapMs] del último contado → ignorados (misma ráfaga).
- *  - Si pasa más de [windowMs] entre swipes contados → la secuencia se reinicia.
- *  - Al alcanzar `requiredSwipes`, [onSwipeUp] devuelve `true` una vez y resetea.
+ * Igual que antes pero con soporte opcional para una "señal global" que el caller
+ * puede inyectar (p. ej. heurística desde AccessibilityService). Todos los nombres
+ * y la lógica temporal/debounce se mantienen.
  */
 class SwipeActivationDetector(
     private val windowMs: Long = DEFAULT_WINDOW_MS,
     private val minGapMs: Long = DEFAULT_MIN_GAP_MS,
 ) {
 
+    // --- estado original (nombres y semántica idénticos) ---
     private var count: Int = 0
     private var lastSwipeAtMs: Long = 0L
     private var hasPrevious: Boolean = false
 
+    // --- NUEVO: señal global y modo de activación (NO rompe comportamiento por defecto) ---
+    enum class ActivationMode {
+        SWIPES_ONLY, // COMPORTAMIENTO POR DEFECTO: solo el conteo de swipes
+        GLOBAL_ONLY, // solo la señal global activa
+        EITHER,      // cualquiera de los dos activa
+        BOTH         // requiere ambos
+    }
+
+    private var activationMode: ActivationMode = ActivationMode.SWIPES_ONLY
+    private var globalGestureDetected: Boolean = false
+    private var globalConfidence: Float = 0f
+    private var globalConfidenceThreshold: Float = 0.6f
+
+    /**
+     * Setea la forma en la que se combinan el conteo de swipes y la señal global.
+     * Por defecto es SWIPES_ONLY para mantener el comportamiento actual.
+     */
+    fun setActivationMode(mode: ActivationMode) {
+        activationMode = mode
+    }
+
+    /**
+     * Inyecta/actualiza la señal global (p. ej. heurística externa). No modifica la
+     * lógica de conteo; solo se evalúa junto al resultado de los swipes según el mode.
+     *
+     * confidence: 0..1
+     */
+    fun setGlobalGesture(detected: Boolean, confidence: Float = 1f) {
+        globalGestureDetected = detected
+        globalConfidence = confidence
+    }
+
+    fun clearGlobalGesture() {
+        globalGestureDetected = false
+        globalConfidence = 0f
+    }
+
+    fun setGlobalConfidenceThreshold(threshold: Float) {
+        globalConfidenceThreshold = threshold
+    }
+
+    // --- helper privado para centralizar la regla de combinación ---
+    private fun resolveActivation(swipesActivated: Boolean): Boolean {
+        val globalDetected = globalGestureDetected && globalConfidence >= globalConfidenceThreshold
+        return when (activationMode) {
+            ActivationMode.SWIPES_ONLY -> swipesActivated
+            ActivationMode.GLOBAL_ONLY -> globalDetected
+            ActivationMode.EITHER -> swipesActivated || globalDetected
+            ActivationMode.BOTH -> swipesActivated && globalDetected
+        }
+    }
+
     /**
      * Registra un scroll vertical en [elapsedRealtimeMs] con el umbral [requiredSwipes].
-     * @return `true` si con este swipe se completó la secuencia de activación.
+     * Mantiene la lógica original; si se alcanza el umbral resetea y devuelve true.
+     *
+     * NOTA: la firma y el comportamiento por defecto no cambian:
+     * - si activationMode == SWIPES_ONLY la función se comporta exactamente como antes.
+     * - si hay una señal global y el modo lo permite, la activación puede venir por esa vía.
      */
     fun onSwipeUp(elapsedRealtimeMs: Long, requiredSwipes: Int): Boolean {
         if (hasPrevious) {
             val gap = elapsedRealtimeMs - lastSwipeAtMs
             // Misma ráfaga (un mismo gesto físico): ignorar sin alterar el conteo.
-            if (gap < minGapMs) return false
+            if (gap < minGapMs) {
+                // antigua rama: retornaba false inmediatamente.
+                // Ahora: evaluamos también la señal global (si corresponde al mode).
+                return resolveActivation(swipesActivated = false)
+            }
             // Gesto nuevo dentro de la ventana → continúa la secuencia; fuera → reinicia.
             count = if (gap <= windowMs) count + 1 else 1
         } else {
@@ -43,12 +92,14 @@ class SwipeActivationDetector(
         lastSwipeAtMs = elapsedRealtimeMs
         hasPrevious = true
 
-        return if (count >= requiredSwipes) {
+        val swipesActivated = if (count >= requiredSwipes) {
             reset()
             true
         } else {
             false
         }
+
+        return resolveActivation(swipesActivated)
     }
 
     /** Reinicia la secuencia (p. ej. al arrancar por otra vía o cambiar de app). */
