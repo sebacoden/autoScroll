@@ -1,0 +1,8 @@
+AutoScroller avanza automáticamente al siguiente video en tus feeds verticales cada N segundos sin que tengas que tocar la pantalla.
+
+Características principales:
+
+* Activación por gestos: Tap con 3 dedos o swipes hacia arriba dentro de la app configurada
+* Pausa inteligente: Si tocas o haces scroll manual, el auto-scroll se suspende y reanuda solo
+* Bienestar digital: Cronómetro en segundo plano y notificaciones al llegar a tu límite de tiempo
+* Privacidad: 100% local. Usa AccessibilityService, no requiere permisos de internet

@@ -1,0 +1,8 @@
+AutoScroller automatically advances to the next video in your vertical feeds every N seconds without touching the screen.
+
+Main features:
+
+* Gesture activation: 3-finger tap or upward swipes within the configured app
+* Smart pause: Manual touch or scroll suspends auto-scroll and resumes later
+* Digital wellbeing: Background timer and notifications when you reach your time limit
+* Privacy: 100% local. Uses AccessibilityService, no internet permission required
