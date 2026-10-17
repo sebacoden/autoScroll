@@ -67,6 +67,21 @@ android {
             kotlin.srcDir("src/androidTest/kotlin")
         }
     }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
