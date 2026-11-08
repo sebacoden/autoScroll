@@ -119,13 +119,7 @@ class AutoScrollService : AccessibilityService() {
         settingsRepository.activationAppPackagesFlow
             .onEach { activationApps = it }
             .launchIn(serviceScope)
-
-        // Trigger 3 dedos: flag y `onGesture(AccessibilityGestureEvent)` requieren API 30.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            settingsRepository.threeFingerTriggerEnabledFlow
-                .onEach(::applyMultiFingerFlag)
-                .launchIn(serviceScope)
-        }
+        
     }
 
     private fun onStateChanged(state: ScrollState) {
@@ -240,27 +234,6 @@ class AutoScrollService : AccessibilityService() {
             logd { "activación por $requiredSwipes swipes en '$lastForegroundPackage'" }
             controller.start()
         }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.R)
-    override fun onGesture(gestureEvent: AccessibilityGestureEvent): Boolean {
-        if (gestureEvent.gestureId == GESTURE_3_FINGER_SINGLE_TAP) {
-            controller.toggle()
-            return true
-        }
-        return super.onGesture(gestureEvent)
-    }
-
-    @RequiresApi(Build.VERSION_CODES.R)
-    private fun applyMultiFingerFlag(enabled: Boolean) {
-        val current = serviceInfo ?: return
-        val updatedFlags = if (enabled) {
-            current.flags or AccessibilityServiceInfo.FLAG_REQUEST_MULTI_FINGER_GESTURES
-        } else {
-            current.flags and AccessibilityServiceInfo.FLAG_REQUEST_MULTI_FINGER_GESTURES.inv()
-        }
-        if (updatedFlags == current.flags) return
-        serviceInfo = current.apply { flags = updatedFlags }
     }
 
     override fun onInterrupt() {

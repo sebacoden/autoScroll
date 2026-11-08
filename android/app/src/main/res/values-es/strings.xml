@@ -49,8 +49,6 @@
     <string name="settings_alerts_label">Alerta al llegar al límite</string>
 
     <string name="settings_section_triggers">Activación</string>
-    <string name="settings_three_finger_label">Tap con 3 dedos</string>
-    <string name="settings_three_finger_help">Activa o desactiva desde cualquier app. Android 11+.</string>
     <string name="settings_swipe_activation_label">Activar con swipes hacia arriba</string>
     <string name="settings_swipe_activation_help">Dentro de una app de la lista, desliza varias veces para arriba y el auto-scroll arranca solo.</string>
     <string name="settings_required_swipes_label">Swipes para activar: %1$d</string>

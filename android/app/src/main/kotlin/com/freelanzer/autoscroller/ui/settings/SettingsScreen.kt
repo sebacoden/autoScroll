@@ -91,7 +91,6 @@ fun SettingsScreen(
             onTimeLimitChange = viewModel::onTimeLimitMinutesChanged,
             onSessionToggle = viewModel::onSessionToggle,
             onAlertsToggle = viewModel::onAlertsEnabledChanged,
-            onThreeFingerToggle = viewModel::onThreeFingerEnabledChanged,
             onSwipeActivationToggle = viewModel::onSwipeActivationEnabledChanged,
             onRequiredSwipesChange = viewModel::onRequiredSwipesChanged,
             onPauseSecondsChange = viewModel::onPauseSecondsChanged,
@@ -110,7 +109,6 @@ private fun SettingsContent(
     onSessionToggle: (Boolean) -> Unit,
     onTimeLimitChange: (Float) -> Unit,
     onAlertsToggle: (Boolean) -> Unit,
-    onThreeFingerToggle: (Boolean) -> Unit,
     onSwipeActivationToggle: (Boolean) -> Unit,
     onRequiredSwipesChange: (Float) -> Unit,
     onPauseSecondsChange: (Float) -> Unit,
@@ -191,12 +189,6 @@ private fun SettingsContent(
                     onValueChange = onRequiredSwipesChange,
                 )
             }
-            ToggleRow(
-                label = stringResource(R.string.settings_three_finger_label),
-                help = stringResource(R.string.settings_three_finger_help),
-                checked = state.threeFingerEnabled,
-                onCheckedChange = onThreeFingerToggle,
-            )
         }
 
         SectionCard(title = stringResource(R.string.settings_section_pause)) {

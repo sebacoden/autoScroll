@@ -47,7 +47,6 @@ class SettingsViewModel @Inject constructor(
             intervalSeconds = prefs.intervalSeconds,
             timeLimitMinutes = prefs.timeLimitMinutes,
             alertsEnabled = prefs.alertsEnabled,
-            threeFingerEnabled = prefs.threeFingerEnabled,
             swipeActivationEnabled = prefs.swipeActivationEnabled,
             requiredSwipes = prefs.requiredSwipes,
             pauseSeconds = prefs.pauseSeconds,
@@ -85,10 +84,6 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setAlertsEnabled(enabled) }
     }
 
-    fun onThreeFingerEnabledChanged(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setThreeFingerTriggerEnabled(enabled) }
-    }
-
     fun onSwipeActivationEnabledChanged(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setSwipeActivationEnabled(enabled) }
     }
@@ -113,18 +108,16 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.intervalMillisFlow,
         settingsRepository.timeLimitMinutesFlow,
         settingsRepository.alertsEnabledFlow,
-        settingsRepository.threeFingerTriggerEnabledFlow,
         combine(
             settingsRepository.swipeActivationEnabledFlow,
             settingsRepository.requiredSwipesToActivateFlow,
             settingsRepository.pauseOnTouchSecondsFlow,
         ) { swipe, swipes, pause -> Triple(swipe, swipes, pause) },
-    ) { intervalMs, limit, alerts, threeFinger, activation ->
+    ) { intervalMs, limit, alerts, activation ->
         PrefsBundle(
             intervalSeconds = (intervalMs / 1_000).toInt().coerceAtLeast(1),
             timeLimitMinutes = limit,
             alertsEnabled = alerts,
-            threeFingerEnabled = threeFinger,
             swipeActivationEnabled = activation.first,
             requiredSwipes = activation.second,
             pauseSeconds = activation.third,
@@ -135,7 +128,6 @@ class SettingsViewModel @Inject constructor(
         val intervalSeconds: Int,
         val timeLimitMinutes: Int,
         val alertsEnabled: Boolean,
-        val threeFingerEnabled: Boolean,
         val swipeActivationEnabled: Boolean,
         val requiredSwipes: Int,
         val pauseSeconds: Int,

@@ -39,7 +39,6 @@ interface SettingsRepository {
     val intervalMillisFlow: Flow<Long>
     val timeLimitMinutesFlow: Flow<Int>
     val alertsEnabledFlow: Flow<Boolean>
-    val threeFingerTriggerEnabledFlow: Flow<Boolean>
     val swipeActivationEnabledFlow: Flow<Boolean>
     val requiredSwipesToActivateFlow: Flow<Int>
     val pauseOnTouchSecondsFlow: Flow<Int>
@@ -49,7 +48,6 @@ interface SettingsRepository {
     suspend fun setIntervalMillis(millis: Long)
     suspend fun setTimeLimitMinutes(minutes: Int)
     suspend fun setAlertsEnabled(enabled: Boolean)
-    suspend fun setThreeFingerTriggerEnabled(enabled: Boolean)
     suspend fun setSwipeActivationEnabled(enabled: Boolean)
     suspend fun setRequiredSwipesToActivate(count: Int)
     suspend fun setPauseOnTouchSeconds(seconds: Int)
@@ -70,7 +68,6 @@ interface SettingsRepository {
         const val DEFAULT_ALERTS_ENABLED: Boolean = true
 
         // Activación
-        const val DEFAULT_THREE_FINGER_ENABLED: Boolean = true
         const val DEFAULT_SWIPE_ACTIVATION_ENABLED: Boolean = true
 
         // Swipes hacia arriba necesarios para activar (dentro de una app de la lista)
@@ -103,9 +100,6 @@ class DataStoreSettingsRepository @Inject constructor(
     override val alertsEnabledFlow: Flow<Boolean> =
         dataStore.read { it[KEY_ALERTS_ENABLED] ?: SettingsRepository.DEFAULT_ALERTS_ENABLED }
 
-    override val threeFingerTriggerEnabledFlow: Flow<Boolean> =
-        dataStore.read { it[KEY_THREE_FINGER_ENABLED] ?: SettingsRepository.DEFAULT_THREE_FINGER_ENABLED }
-
     override val swipeActivationEnabledFlow: Flow<Boolean> =
         dataStore.read { it[KEY_SWIPE_ACTIVATION_ENABLED] ?: SettingsRepository.DEFAULT_SWIPE_ACTIVATION_ENABLED }
 
@@ -137,10 +131,6 @@ class DataStoreSettingsRepository @Inject constructor(
 
     override suspend fun setAlertsEnabled(enabled: Boolean) {
         dataStore.edit { it[KEY_ALERTS_ENABLED] = enabled }
-    }
-
-    override suspend fun setThreeFingerTriggerEnabled(enabled: Boolean) {
-        dataStore.edit { it[KEY_THREE_FINGER_ENABLED] = enabled }
     }
 
     override suspend fun setSwipeActivationEnabled(enabled: Boolean) {
@@ -190,7 +180,6 @@ class DataStoreSettingsRepository @Inject constructor(
         val KEY_TIME_LIMIT_MIN = intPreferencesKey("time_limit_min")
         val KEY_ALERTS_ENABLED = booleanPreferencesKey("alerts_enabled")
         val KEY_EULA_ACCEPTED = booleanPreferencesKey("eula_accepted")
-        val KEY_THREE_FINGER_ENABLED = booleanPreferencesKey("three_finger_enabled")
         val KEY_SWIPE_ACTIVATION_ENABLED = booleanPreferencesKey("swipe_activation_enabled")
         val KEY_REQUIRED_SWIPES = intPreferencesKey("required_swipes")
         val KEY_PAUSE_ON_TOUCH_SEC = intPreferencesKey("pause_on_touch_sec")
