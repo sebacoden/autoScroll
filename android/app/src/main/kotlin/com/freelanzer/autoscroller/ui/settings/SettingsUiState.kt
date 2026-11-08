@@ -14,6 +14,7 @@ data class ActivationApp(
  */
 data class SettingsUiState(
     val isServiceEnabled: Boolean,
+    val isSessionActive: Boolean,
     val intervalSeconds: Int,
     val timeLimitMinutes: Int,
     val alertsEnabled: Boolean,
@@ -26,6 +27,7 @@ data class SettingsUiState(
     companion object {
         val Initial = SettingsUiState(
             isServiceEnabled = false,
+            isSessionActive = false,
             intervalSeconds = 4,
             timeLimitMinutes = 30,
             alertsEnabled = true,

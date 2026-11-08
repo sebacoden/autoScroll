@@ -23,7 +23,10 @@
     <string name="eula_data_title">Datos y privacidad</string>
     <string name="eula_data_body">AutoScroller guarda estadísticas de uso —duración de cada sesión, cantidad de swipes y la aplicación en la que se usó— únicamente en tu dispositivo. Estos datos no se envían a ningún servidor ni se comparten con terceros, y la app no accede al contenido que ves. Si en el futuro se ofrece sincronización en la nube o recopilación de datos, será siempre opcional y requerirá tu consentimiento explícito.</string>
     <string name="eula_accept">Aceptar y continuar</string>
-
+    <string name="settings_section_session">Sesión</string>
+    <string name="settings_session_on">Auto-scroll activo</string>
+    <string name="settings_session_off">Auto-scroll apagado</string>
+    <string name="settings_session_help">Activá o pausá el auto-scroll manualmente. También podés usar los gestos configurados.</string>
     <!-- Tarjeta de estado del servicio (pantalla de Ajustes) -->
     <string name="status_service_enabled">Servicio de accesibilidad activo</string>
     <string name="status_service_disabled">Servicio de accesibilidad desactivado</string>

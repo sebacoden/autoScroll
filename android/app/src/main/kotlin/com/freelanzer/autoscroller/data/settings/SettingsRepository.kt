@@ -79,7 +79,7 @@ interface SettingsRepository {
         const val MAX_REQUIRED_SWIPES: Int = 10
 
         // Pausa temporal al interactuar (toque / scroll) antes de reanudar solo
-        const val DEFAULT_PAUSE_ON_TOUCH_SEC: Int = 3
+        const val DEFAULT_PAUSE_ON_TOUCH_SEC: Int = 5
         const val MIN_PAUSE_ON_TOUCH_SEC: Int = 1
         const val MAX_PAUSE_ON_TOUCH_SEC: Int = 30
     }
