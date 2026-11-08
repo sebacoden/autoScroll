@@ -89,8 +89,8 @@ fun SettingsScreen(
             onOpenAccessibilitySettings = { openAccessibilityDetails(context) },
             onIntervalChange = viewModel::onIntervalSecondsChanged,
             onTimeLimitChange = viewModel::onTimeLimitMinutesChanged,
+            onSessionToggle = viewModel::onSessionToggle,
             onAlertsToggle = viewModel::onAlertsEnabledChanged,
-            onThreeFingerToggle = viewModel::onThreeFingerEnabledChanged,
             onSwipeActivationToggle = viewModel::onSwipeActivationEnabledChanged,
             onRequiredSwipesChange = viewModel::onRequiredSwipesChanged,
             onPauseSecondsChange = viewModel::onPauseSecondsChanged,
@@ -106,9 +106,9 @@ private fun SettingsContent(
     innerPadding: PaddingValues,
     onOpenAccessibilitySettings: () -> Unit,
     onIntervalChange: (Float) -> Unit,
+    onSessionToggle: (Boolean) -> Unit,
     onTimeLimitChange: (Float) -> Unit,
     onAlertsToggle: (Boolean) -> Unit,
-    onThreeFingerToggle: (Boolean) -> Unit,
     onSwipeActivationToggle: (Boolean) -> Unit,
     onRequiredSwipesChange: (Float) -> Unit,
     onPauseSecondsChange: (Float) -> Unit,
@@ -127,6 +127,19 @@ private fun SettingsContent(
             isEnabled = state.isServiceEnabled,
             onOpenSettings = onOpenAccessibilitySettings,
         )
+        if (state.isServiceEnabled) {
+            SectionCard(title = stringResource(R.string.settings_section_session)) {
+                ToggleRow(
+                    label = stringResource(
+                        if (state.isSessionActive) R.string.settings_session_on
+                        else R.string.settings_session_off,
+                    ),
+                    help = stringResource(R.string.settings_session_help),
+                    checked = state.isSessionActive,
+                    onCheckedChange = onSessionToggle,
+                )
+            }
+        }
 
         SectionCard(title = stringResource(R.string.settings_section_scroll)) {
             SliderRow(
@@ -176,12 +189,6 @@ private fun SettingsContent(
                     onValueChange = onRequiredSwipesChange,
                 )
             }
-            ToggleRow(
-                label = stringResource(R.string.settings_three_finger_label),
-                help = stringResource(R.string.settings_three_finger_help),
-                checked = state.threeFingerEnabled,
-                onCheckedChange = onThreeFingerToggle,
-            )
         }
 
         SectionCard(title = stringResource(R.string.settings_section_pause)) {

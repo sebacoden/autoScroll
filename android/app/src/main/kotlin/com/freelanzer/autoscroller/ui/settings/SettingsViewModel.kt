@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.freelanzer.autoscroller.core.apps.InstalledAppsProvider
 import com.freelanzer.autoscroller.core.service.ServiceStatusProvider
 import com.freelanzer.autoscroller.data.settings.SettingsRepository
+import com.freelanzer.autoscroller.domain.controller.ScrollController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlin.math.roundToLong
@@ -14,7 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-
+import com.freelanzer.autoscroller.domain.controller.ScrollState
 /**
  * ViewModel de la pantalla principal (Ajustes).
  *
@@ -27,6 +28,7 @@ class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val serviceStatusProvider: ServiceStatusProvider,
     private val installedAppsProvider: InstalledAppsProvider,
+    private val scrollController: ScrollController,
 ) : ViewModel() {
 
     private val serviceEnabled = MutableStateFlow(
@@ -35,20 +37,21 @@ class SettingsViewModel @Inject constructor(
 
     val uiState: StateFlow<SettingsUiState> = combine(
         serviceEnabled,
+        scrollController.state,
         prefsStateFlow(),
         settingsRepository.activationAppPackagesFlow,
-    ) { enabled, prefs, appPackages ->
+    ) { enabled, scrollState, prefs, appPackages ->
         SettingsUiState(
             isServiceEnabled = enabled,
+            isSessionActive = scrollState == ScrollState.Scrolling,
             intervalSeconds = prefs.intervalSeconds,
             timeLimitMinutes = prefs.timeLimitMinutes,
             alertsEnabled = prefs.alertsEnabled,
-            threeFingerEnabled = prefs.threeFingerEnabled,
             swipeActivationEnabled = prefs.swipeActivationEnabled,
             requiredSwipes = prefs.requiredSwipes,
             pauseSeconds = prefs.pauseSeconds,
             activationApps = appPackages
-                .map { ActivationApp(it, installedAppsProvider.labelFor(it)) }
+                .map { pkg -> ActivationApp(pkg, installedAppsProvider.labelFor(pkg)) }
                 .sortedBy { it.label.lowercase() },
         )
     }.stateIn(
@@ -56,7 +59,11 @@ class SettingsViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MS),
         initialValue = SettingsUiState.Initial,
     )
-
+    /** Toggle manual de la sesión de auto-scroll. */
+    fun onSessionToggle(active: Boolean) {
+        if (!serviceStatusProvider.isAutoScrollServiceEnabled()) return
+        if (active) scrollController.start() else scrollController.stop()
+    }
     fun refreshServiceStatus() {
         serviceEnabled.value = serviceStatusProvider.isAutoScrollServiceEnabled()
     }
@@ -75,10 +82,6 @@ class SettingsViewModel @Inject constructor(
 
     fun onAlertsEnabledChanged(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setAlertsEnabled(enabled) }
-    }
-
-    fun onThreeFingerEnabledChanged(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setThreeFingerTriggerEnabled(enabled) }
     }
 
     fun onSwipeActivationEnabledChanged(enabled: Boolean) {
@@ -105,18 +108,16 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.intervalMillisFlow,
         settingsRepository.timeLimitMinutesFlow,
         settingsRepository.alertsEnabledFlow,
-        settingsRepository.threeFingerTriggerEnabledFlow,
         combine(
             settingsRepository.swipeActivationEnabledFlow,
             settingsRepository.requiredSwipesToActivateFlow,
             settingsRepository.pauseOnTouchSecondsFlow,
         ) { swipe, swipes, pause -> Triple(swipe, swipes, pause) },
-    ) { intervalMs, limit, alerts, threeFinger, activation ->
+    ) { intervalMs, limit, alerts, activation ->
         PrefsBundle(
             intervalSeconds = (intervalMs / 1_000).toInt().coerceAtLeast(1),
             timeLimitMinutes = limit,
             alertsEnabled = alerts,
-            threeFingerEnabled = threeFinger,
             swipeActivationEnabled = activation.first,
             requiredSwipes = activation.second,
             pauseSeconds = activation.third,
@@ -127,7 +128,6 @@ class SettingsViewModel @Inject constructor(
         val intervalSeconds: Int,
         val timeLimitMinutes: Int,
         val alertsEnabled: Boolean,
-        val threeFingerEnabled: Boolean,
         val swipeActivationEnabled: Boolean,
         val requiredSwipes: Int,
         val pauseSeconds: Int,

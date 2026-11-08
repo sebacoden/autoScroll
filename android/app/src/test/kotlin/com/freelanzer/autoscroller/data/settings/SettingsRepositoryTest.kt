@@ -105,26 +105,9 @@ class SettingsRepositoryTest {
         }
     }
 
-    @Test
-    fun `threeFingerTrigger defaults to true (activación primaria)`() = runBlocking {
-        // Verificamos primero el invariante del producto: tap con 3 dedos es la
-        // activación por defecto post-onboarding.
-        assertThat(SettingsRepository.DEFAULT_THREE_FINGER_ENABLED).isTrue()
 
-        repository.threeFingerTriggerEnabledFlow.test {
-            assertThat(awaitItem()).isEqualTo(SettingsRepository.DEFAULT_THREE_FINGER_ENABLED)
-            cancelAndConsumeRemainingEvents()
-        }
-    }
 
-    @Test
-    fun `setThreeFingerTriggerEnabled persists toggle`() = runBlocking {
-        repository.setThreeFingerTriggerEnabled(false)
-        repository.threeFingerTriggerEnabledFlow.test {
-            assertThat(awaitItem()).isFalse()
-            cancelAndConsumeRemainingEvents()
-        }
-    }
+
 
     @Test
     fun `setSwipeActivationEnabled persists toggle`() = runBlocking {

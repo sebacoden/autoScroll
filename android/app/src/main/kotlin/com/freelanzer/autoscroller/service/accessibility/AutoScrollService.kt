@@ -119,13 +119,7 @@ class AutoScrollService : AccessibilityService() {
         settingsRepository.activationAppPackagesFlow
             .onEach { activationApps = it }
             .launchIn(serviceScope)
-
-        // Trigger 3 dedos: flag y `onGesture(AccessibilityGestureEvent)` requieren API 30.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            settingsRepository.threeFingerTriggerEnabledFlow
-                .onEach(::applyMultiFingerFlag)
-                .launchIn(serviceScope)
-        }
+        
     }
 
     private fun onStateChanged(state: ScrollState) {
@@ -218,67 +212,28 @@ class AutoScrollService : AccessibilityService() {
      */
     private fun handleSwipeActivation(event: AccessibilityEvent, now: Long) {
         if (!swipeActivationEnabled) return
-
-        val isScrollEvent = event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED
-        val isContentChange = event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
-
-        // 👇 clave: aceptar ambos tipos de eventos
-        if (!isScrollEvent && !isContentChange) return
+        if (event.eventType != AccessibilityEvent.TYPE_VIEW_SCROLLED) return
 
         if (lastForegroundPackage !in activationApps) {
             swipeActivationDetector.reset()
             return
         }
 
-        val significant = when {
-            // Caso ideal: scroll real con delta
-            isScrollEvent && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P -> {
-                kotlin.math.abs(event.scrollDeltaY) >= MIN_SWIPE_DELTA_PX
-            }
-
-            // Scroll sin delta (API vieja o raro)
-            isScrollEvent -> true
-
-            // 👇 CLAVE para dispositivos físicos
-            isContentChange -> true
-
-            else -> false
+        val significant = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            kotlin.math.abs(event.scrollDeltaY) >= MIN_SWIPE_DELTA_PX
+        } else {
+            true // API < 28: no hay delta; contamos cualquier VIEW_SCROLLED
         }
-
         if (!significant) return
 
-        // 👇 log MUY útil para debug real
         logd {
-            "event=${eventTypeName(event.eventType)} " +
-                    "deltaY=${if (Build.VERSION.SDK_INT >= 28) event.scrollDeltaY else "NA"} " +
-                    "pkg=$lastForegroundPackage"
+            "event=VIEW_SCROLLED deltaY=${if (Build.VERSION.SDK_INT >= 28) event.scrollDeltaY else "NA"} pkg=$lastForegroundPackage"
         }
 
         if (swipeActivationDetector.onSwipeUp(now, requiredSwipes)) {
             logd { "activación por $requiredSwipes swipes en '$lastForegroundPackage'" }
             controller.start()
         }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.R)
-    override fun onGesture(gestureEvent: AccessibilityGestureEvent): Boolean {
-        if (gestureEvent.gestureId == GESTURE_3_FINGER_SINGLE_TAP) {
-            controller.toggle()
-            return true
-        }
-        return super.onGesture(gestureEvent)
-    }
-
-    @RequiresApi(Build.VERSION_CODES.R)
-    private fun applyMultiFingerFlag(enabled: Boolean) {
-        val current = serviceInfo ?: return
-        val updatedFlags = if (enabled) {
-            current.flags or AccessibilityServiceInfo.FLAG_REQUEST_MULTI_FINGER_GESTURES
-        } else {
-            current.flags and AccessibilityServiceInfo.FLAG_REQUEST_MULTI_FINGER_GESTURES.inv()
-        }
-        if (updatedFlags == current.flags) return
-        serviceInfo = current.apply { flags = updatedFlags }
     }
 
     override fun onInterrupt() {
